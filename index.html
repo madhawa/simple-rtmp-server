@@ -41,7 +41,7 @@ see also: <a href="https://github.com/winlinvip/simple-rtmp-server">https://gith
 see also: <a href="http://winlinvip.github.io/simple-rtmp-server">http://winlinvip.github.io/simple-rtmp-server</a></p>
 
 <h3>
-<a name="authors" class="anchor" href="#authors"><span class="octicon octicon-link"></span></a>Authors</h3>
+<a name="contributors" class="anchor" href="#contributors"><span class="octicon octicon-link"></span></a>Contributors</h3>
 
 <p>winlin(winterserver): <a href="http://blog.csdn.net/win_lin">http://blog.csdn.net/win_lin</a></p>
 
@@ -53,7 +53,7 @@ see also: <a href="http://winlinvip.github.io/simple-rtmp-server">http://winlinv
 <pre>
 tar xf simple-rtmp-server-*.*.tar.gz
 cd simple-rtmp-server-*.*/trunk
-./configure --with-ssl --with-hls
+./configure --with-ssl --with-hls --with-ffmpeg
 make
 </pre>
 
@@ -63,30 +63,78 @@ make
 ./objs/simple_rtmp_server -c conf/srs.conf
 </pre>
 
-<p>step 3(optional): start nginx for HLS <br></p>
+<p>step 3(optinal): start srs listen at 19350 to forward to<br></p>
+
+<pre>
+./objs/simple_rtmp_server -c conf/srs.19350.conf
+</pre>
+
+<p>step 4(optional): start nginx for HLS <br></p>
 
 <pre>
 sudo ./objs/nginx/sbin/nginx
 </pre>
 
-<p>step 4: publish live stream <br></p>
+<p>step 5: publish live stream <br></p>
 
 <pre>
 FMS URL: rtmp://127.0.0.1:1935/live
 Stream:  livestream
 For example, use ffmpeg to publish:
-    ffmpeg -re -i source.flv -vcodec copy -acodec copy \
-    -f flv -y rtmp://127.0.0.1:1935/live/livestream
+    for((;;)); do \
+        ./objs/ffmpeg/bin/ffmpeg -re -i ./doc/source.200kbps.768x320.flv \
+        -vcodec copy -acodec copy \
+        -f flv -y rtmp://127.0.0.1:1935/live/livestream; \
+        sleep 1; \
+    done
 </pre>
 
-<p>step 5: play live stream <br></p>
+<p>step 6: add server ip to client hosts as demo. <br></p>
 
 <pre>
-rtmp url: rtmp://127.0.0.1:1935/live/livestream
-m3u8 url: http://127.0.0.1:80/live/livestream.m3u8
+# edit the folowing file:
+# linux: /etc/hosts
+# windows: C:\Windows\System32\drivers\etc\hosts
+# where server ip is 192.168.2.111
+192.168.2.111 demo 
+</pre>
+
+<p>step 7: play live stream. <br></p>
+
+<pre>
+rtmp url: rtmp://demo:1935/live/livestream
+m3u8 url: http://demo:80/live/livestream.m3u8
+</pre>
+
+<p>step 8: play live stream auto transcoded<br></p>
+
+<pre>
+rtmp url: rtmp://demo:1935/live/livestream_ld
+m3u8 url: http://demo:80/live/livestream_ld.m3u8
+rtmp url: rtmp://demo:1935/live/livestream_sd
+m3u8 url: http://demo:80/live/livestream_sd.m3u8
+</pre>
+
+<p>step 9: play live stream auto forwarded, the hls dir change to /forward<br></p>
+
+<pre>
+rtmp url: rtmp://demo:19350/live/livestream
+m3u8 url: http://demo:80/forward/live/livestream.m3u8
+rtmp url: rtmp://demo:19350/live/livestream_ld
+m3u8 url: http://demo:80/forward/live/livestream_ld.m3u8
+rtmp url: rtmp://demo:19350/live/livestream_sd
+m3u8 url: http://demo:80/forward/live/livestream_sd.m3u8
 </pre>
 
 <h3>
+<a name="system-requirements" class="anchor" href="#system-requirements"><span class="octicon octicon-link"></span></a>System Requirements</h3>
+
+<p>Supported operating systems and hardware:</p>
+
+<ul>
+<li>All Linux , both 32 and 64 bits</li>
+<li>All handware.</li>
+</ul><h3>
 <a name="summary" class="anchor" href="#summary"><span class="octicon octicon-link"></span></a>Summary</h3>
 
 <ol>
@@ -120,9 +168,11 @@ m3u8 url: http://127.0.0.1:80/live/livestream.m3u8
 </li>
 <li>support broadcast by forward the stream to other servers(origin/edge).<br>
 </li>
-<li>[plan] support live stream transcoding by ffmpeg.<br>
+<li>support live stream transcoding by ffmpeg.<br>
 </li>
-<li>[plan] support full http callback api.<br>
+<li>support live stream transcoding by ffmpeg.<br>
+</li>
+<li>support ffmpeg filters(logo/overlay/crop), x264 params.<br>
 </li>
 <li>[plan] support network based cli and json result.<br>
 </li>
@@ -210,6 +260,10 @@ usr sys idl wai hiq siq| read  writ| recv  send|  in   out | int   csw
 <a name="history" class="anchor" href="#history"><span class="octicon octicon-link"></span></a>History</h3>
 
 <ul>
+<li>v0.7, 2013-12-01, support all ffmpeg filters and params.</li>
+<li>v0.7, 2013-11-30, support live stream transcoding by ffmpeg.</li>
+<li>v0.7, 2013-11-30, support --with/without -ffmpeg, build ffmpeg-2.1.</li>
+<li>v0.7, 2013-11-30, add ffmpeg-2.1, x264-core138, lame-3.99.5, libaacplus-2.0.2.</li>
 <li>v0.6, 2013-11-29, v0.6 released. 16094 lines.</li>
 <li>v0.6, 2013-11-29, add performance summary, 1800 clients, 900Mbps, CPU 90.2%, 41MB.</li>
 <li>v0.6, 2013-11-29, support forward stream to other edge server.</li>
