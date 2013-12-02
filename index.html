@@ -127,6 +127,41 @@ m3u8 url: http://demo:80/forward/live/livestream_sd.m3u8
 </pre>
 
 <h3>
+<a name="architecture" class="anchor" href="#architecture"><span class="octicon octicon-link"></span></a>Architecture</h3>
+
+<p>System Architecture:</p>
+
+<pre>
++------------------------------------------------------+
+|             SRS(Simple Rtmp Server)                  |
++---------------+---------------+-----------+----------+
+|   API/hook    |   Transcoder  |    HLS    |   RTMP   |
+|  http-parser  |  FFMPEG/x264  |  NGINX/ts | protocol |
++---------------+---------------+-----------+----------+
+|              Network(state-threads)                  |
++------------------------------------------------------+
+|      All Linux(RHEL,Centos,Ubuntu,Fedora...)         |
++------------------------------------------------------+
+</pre>
+
+<p>Stream Architecture:</p>
+
+<pre>
+        +---------+              +----------+ 
+        + Publish +              +  Deliver | 
+        +---|-----+              +----|-----+ 
++-----------+-------------------------+----------------+
+| Encoder   | SRS(Simple Rtmp Server) |     Client     |
++-----------+-------------------------+----------------+
+| (FMLE,    |   +-&gt; RTMP protocol ----+-&gt; Flash Player |
+| FFMPEG, --+-&gt; +-&gt; HLS/NGINX --------+-&gt; m3u8 player  |
+| Flash,    |   +-&gt; Fowarder ---------+-&gt; RTMP Server  |
+| XSPLIT,   |   +-&gt; Transcoder -------+-&gt; RTMP Server  |
+|  ...)     |   +-&gt; DVR --------------+-&gt; FILE         |
++-----------+-------------------------+----------------+
+</pre>
+
+<h3>
 <a name="system-requirements" class="anchor" href="#system-requirements"><span class="octicon octicon-link"></span></a>System Requirements</h3>
 
 <p>Supported operating systems and hardware:</p>
@@ -175,6 +210,8 @@ m3u8 url: http://demo:80/forward/live/livestream_sd.m3u8
 <li>support ffmpeg filters(logo/overlay/crop), x264 params.<br>
 </li>
 <li>[plan] support network based cli and json result.<br>
+</li>
+<li>[plan] support http callback api hooks(for authentication).<br>
 </li>
 <li>[plan] support bandwidth test api and flash client.<br>
 </li>
@@ -260,8 +297,9 @@ usr sys idl wai hiq siq| read  writ| recv  send|  in   out | int   csw
 <a name="history" class="anchor" href="#history"><span class="octicon octicon-link"></span></a>History</h3>
 
 <ul>
+<li>v0.7, 2013-12-01, support dead-loop detect for forwarder and transcoder.</li>
 <li>v0.7, 2013-12-01, support all ffmpeg filters and params.</li>
-<li>v0.7, 2013-11-30, support live stream transcoding by ffmpeg.</li>
+<li>v0.7, 2013-11-30, support live stream transcoder by ffmpeg.</li>
 <li>v0.7, 2013-11-30, support --with/without -ffmpeg, build ffmpeg-2.1.</li>
 <li>v0.7, 2013-11-30, add ffmpeg-2.1, x264-core138, lame-3.99.5, libaacplus-2.0.2.</li>
 <li>v0.6, 2013-11-29, v0.6 released. 16094 lines.</li>
