@@ -53,7 +53,7 @@ see also: <a href="http://winlinvip.github.io/simple-rtmp-server">http://winlinv
 <pre>
 tar xf simple-rtmp-server-*.*.tar.gz
 cd simple-rtmp-server-*.*/trunk
-./configure --with-ssl --with-hls --with-ffmpeg
+./configure --with-ssl --with-hls --with-ffmpeg --with-http
 make
 </pre>
 
@@ -75,7 +75,13 @@ make
 sudo ./objs/nginx/sbin/nginx
 </pre>
 
-<p>step 5: publish live stream <br></p>
+<p>step 5(optional): start http hooks for srs callback <br></p>
+
+<pre>
+python ./research/api-server/server.py 8085
+</pre>
+
+<p>step 6: publish live stream <br></p>
 
 <pre>
 FMS URL: rtmp://127.0.0.1:1935/live
@@ -89,7 +95,7 @@ For example, use ffmpeg to publish:
     done
 </pre>
 
-<p>step 6: add server ip to client hosts as demo. <br></p>
+<p>step 7: add server ip to client hosts as demo. <br></p>
 
 <pre>
 # edit the folowing file:
@@ -99,14 +105,14 @@ For example, use ffmpeg to publish:
 192.168.2.111 demo 
 </pre>
 
-<p>step 7: play live stream. <br></p>
+<p>step 8: play live stream. <br></p>
 
 <pre>
 rtmp url: rtmp://demo:1935/live/livestream
 m3u8 url: http://demo:80/live/livestream.m3u8
 </pre>
 
-<p>step 8: play live stream auto transcoded<br></p>
+<p>step 9: play live stream auto transcoded<br></p>
 
 <pre>
 rtmp url: rtmp://demo:1935/live/livestream_ld
@@ -115,7 +121,7 @@ rtmp url: rtmp://demo:1935/live/livestream_sd
 m3u8 url: http://demo:80/live/livestream_sd.m3u8
 </pre>
 
-<p>step 9: play live stream auto forwarded, the hls dir change to /forward<br></p>
+<p>step 10: play live stream auto forwarded, the hls dir change to /forward<br></p>
 
 <pre>
 rtmp url: rtmp://demo:19350/live/livestream
@@ -209,9 +215,11 @@ m3u8 url: http://demo:80/forward/live/livestream_sd.m3u8
 </li>
 <li>support ffmpeg filters(logo/overlay/crop), x264 params.<br>
 </li>
-<li>[plan] support network based cli and json result.<br>
+<li>support audio transcode only, speex/mp3 to aac<br>
 </li>
-<li>[plan] support http callback api hooks(for authentication).<br>
+<li>support http callback api hooks(for authentication and injection).<br>
+</li>
+<li>[plan] support network based cli and json result.<br>
 </li>
 <li>[plan] support bandwidth test api and flash client.<br>
 </li>
@@ -226,6 +234,8 @@ m3u8 url: http://demo:80/forward/live/livestream_sd.m3u8
 <li>[plan] support encryption: RTMPE/RTMPS, HLS DRM<br>
 </li>
 <li>[plan] support RTMPT, http to tranverse firewalls<br>
+</li>
+<li>[plan] support file source, transcoding file to live stream<br>
 </li>
 </ol><h3>
 <a name="performance" class="anchor" href="#performance"><span class="octicon octicon-link"></span></a>Performance</h3>
@@ -301,6 +311,12 @@ usr sys idl wai hiq siq| read  writ| recv  send|  in   out | int   csw
 <a name="history" class="anchor" href="#history"><span class="octicon octicon-link"></span></a>History</h3>
 
 <ul>
+<li>v0.8, 2013-12-07, support http callback hooks, on_connect.</li>
+<li>v0.8, 2013-12-07, support network based cli and json result, add CherryPy 3.2.4.</li>
+<li>v0.8, 2013-12-07, update http/hls/rtmp load test tool <a href="https://github.com/winlinvip/st-load">st_load</a>, use srs rtmp sdk.</li>
+<li>v0.8, 2013-12-06, support max_connections, drop if exceed.</li>
+<li>v0.8, 2013-12-05, support log_dir, write ffmpeg log to file.</li>
+<li>v0.8, 2013-12-05, fix the forward/hls/encoder bug.</li>
 <li>v0.7, 2013-12-03, v0.7 released. 17605 lines.</li>
 <li>v0.7, 2013-12-01, support dead-loop detect for forwarder and transcoder.</li>
 <li>v0.7, 2013-12-01, support all ffmpeg filters and params.</li>
