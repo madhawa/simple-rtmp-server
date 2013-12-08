@@ -36,6 +36,7 @@
 
 <p>srs(simple rtmp origin live server) over state-threads.<br>
 srs is a simple, high-performance, running in single process, origin live server.<br>
+srs supports rtmp, HLS, transcoding, forward, http hooks. <br>
 blog: <a href="http://blog.csdn.net/win_lin">http://blog.csdn.net/win_lin</a> <br>
 see also: <a href="https://github.com/winlinvip/simple-rtmp-server">https://github.com/winlinvip/simple-rtmp-server</a> <br>
 see also: <a href="http://winlinvip.github.io/simple-rtmp-server">http://winlinvip.github.io/simple-rtmp-server</a></p>
@@ -211,7 +212,7 @@ m3u8 url: http://demo:80/forward/live/livestream_sd.m3u8
 </li>
 <li>support live stream transcoding by ffmpeg.<br>
 </li>
-<li>support live stream transcoding by ffmpeg.<br>
+<li>support live stream forward(acopy/vcopy) by ffmpeg.<br>
 </li>
 <li>support ffmpeg filters(logo/overlay/crop), x264 params.<br>
 </li>
@@ -269,6 +270,8 @@ usr sys idl wai hiq siq| read  writ| recv  send|  in   out | int   csw
 <a name="releases" class="anchor" href="#releases"><span class="octicon octicon-link"></span></a>Releases</h3>
 
 <ul>
+<li>2013-12-08, <a href="https://github.com/winlinvip/simple-rtmp-server/releases/tag/0.8">release v0.8</a>, support http hooks callback, update st-load. 19186 lines.<br>
+</li>
 <li>2013-12-03, <a href="https://github.com/winlinvip/simple-rtmp-server/releases/tag/0.7">release v0.7</a>, support live stream transcoding. 17605 lines.<br>
 </li>
 <li>2013-11-29, <a href="https://github.com/winlinvip/simple-rtmp-server/releases/tag/0.6">release v0.6</a>, support forward stream to origin/edge. 16094 lines.<br>
@@ -289,19 +292,21 @@ usr sys idl wai hiq siq| read  writ| recv  send|  in   out | int   csw
 <a name="compare" class="anchor" href="#compare"><span class="octicon octicon-link"></span></a>Compare</h3>
 
 <ul>
-<li>srs v0.7: 17605 lines.<br>
+<li>srs v0.8: 19186 lines. implements http hooks refer to <a href="https://github.com/arut/nginx-rtmp-module">nginx-rtmp</a>. <br>
 </li>
-<li>srs v0.6: 16094 lines.<br>
+<li>srs v0.7: 17605 lines. implements transcoding(FFMPEG) feature refer to <a href="http://www.wowza.com">wowza</a>. <br>
 </li>
-<li>srs v0.5: 14449 lines.<br>
+<li>srs v0.6: 16094 lines. important feature forward for CDN. <br>
 </li>
-<li>srs v0.4: 12500 lines.<br>
+<li>srs v0.5: 14449 lines. implements HLS feature refer to <a href="https://github.com/arut/nginx-rtmp-module">nginx-rtmp</a>. <br>
 </li>
-<li>srs v0.3: 11773 lines.<br>
+<li>srs v0.4: 12500 lines. important feature reload for CDN. <br>
 </li>
-<li>srs v0.2: 10125 lines.<br>
+<li>srs v0.3: 11773 lines. implements vhost feature refer to <a href="http://www.adobe.com/products/adobe-media-server-family.html">FMS</a>. <br>
 </li>
-<li>srs v0.1: 8287 lines.<br>
+<li>srs v0.2: 10125 lines. implements rtmp protocol stack refer to <a href="https://github.com/arut/nginx-rtmp-module">nginx-rtmp</a>. <br>
+</li>
+<li>srs v0.1: 8287 lines. base on state-threads. <br>
 </li>
 <li>nginx-rtmp v1.0.4: 26786 lines <br>
 </li>
@@ -311,6 +316,9 @@ usr sys idl wai hiq siq| read  writ| recv  send|  in   out | int   csw
 <a name="history" class="anchor" href="#history"><span class="octicon octicon-link"></span></a>History</h3>
 
 <ul>
+<li>v0.8, 2013-12-08, v0.8 released. 19186 lines.</li>
+<li>v0.8, 2013-12-08, support http hooks: on_connect/close/publish/unpublish/play/stop.</li>
+<li>v0.8, 2013-12-08, support multiple http hooks for a event.</li>
 <li>v0.8, 2013-12-07, support http callback hooks, on_connect.</li>
 <li>v0.8, 2013-12-07, support network based cli and json result, add CherryPy 3.2.4.</li>
 <li>v0.8, 2013-12-07, update http/hls/rtmp load test tool <a href="https://github.com/winlinvip/st-load">st_load</a>, use srs rtmp sdk.</li>
