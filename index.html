@@ -44,7 +44,11 @@ see also: <a href="http://winlinvip.github.io/simple-rtmp-server">http://winlinv
 <h3>
 <a name="contributors" class="anchor" href="#contributors"><span class="octicon octicon-link"></span></a>Contributors</h3>
 
-<p>winlin(winterserver): <a href="http://blog.csdn.net/win_lin">http://blog.csdn.net/win_lin</a></p>
+<p>winlin(<a href="#">winterserver</a>): <a href="http://blog.csdn.net/win_lin">http://blog.csdn.net/win_lin</a> <br>
+wenjie(<a href="https://github.com/wenjiegit/simple-rtmp-server">wenjiegit</a>): <a href="http://blog.chinaunix.net/uid/25006789.html">http://blog.chinaunix.net/uid/25006789.html</a> <br>
+who is the contributors: <br>
+1. contribute important features to srs. <br>
+2. the name of all contributors will send in the response of NetConnection.connect and metadata. </p>
 
 <h3>
 <a name="usage" class="anchor" href="#usage"><span class="octicon octicon-link"></span></a>Usage</h3>
@@ -90,21 +94,35 @@ sudo ./objs/nginx/sbin/nginx
 python ./research/api-server/server.py 8085
 </pre>
 
-<p><strong>step 6:</strong> publish live stream <br></p>
+<p><strong>step 6:</strong> publish demo live stream <br></p>
 
 <pre>
-FMS URL: rtmp://127.0.0.1:1935/live
+FMS URL: rtmp://127.0.0.1/live?vhost=demo.srs.com
 Stream:  livestream
-For example, use ffmpeg to publish:
+FFMPEG to publish the default demo stream:
     for((;;)); do \
         ./objs/ffmpeg/bin/ffmpeg -re -i ./doc/source.200kbps.768x320.flv \
         -vcodec copy -acodec copy \
-        -f flv -y rtmp://127.0.0.1:1935/live/livestream; \
+        -f flv -y rtmp://127.0.0.1/live?vhost=demo.srs.com/livestream; \
         sleep 1; \
     done
 </pre>
 
-<p><strong>step 7:</strong> add server ip to client hosts as demo. <br></p>
+<p><strong>step 7:</strong> publish players live stream <br></p>
+
+<pre>
+FMS URL: rtmp://127.0.0.1/live?vhost=players
+Stream:  livestream
+FFMPEG to publish the players demo stream:
+    for((;;)); do \
+        ./objs/ffmpeg/bin/ffmpeg -re -i ./doc/source.200kbps.768x320.flv \
+        -vcodec copy -acodec copy \
+        -f flv -y rtmp://127.0.0.1/live?vhost=players/livestream; \
+        sleep 1; \
+    done
+</pre>
+
+<p><strong>step 8:</strong> add server ip to client hosts as demo. <br></p>
 
 <pre>
 # edit the folowing file:
@@ -114,41 +132,41 @@ For example, use ffmpeg to publish:
 192.168.2.111 demo.srs.com
 </pre>
 
-<p><strong>step 8:</strong> play live stream. <br></p>
+<p><strong>step 9:</strong> play live stream. <br></p>
 
 <pre>
-players: http://demo.srs.com:80/players
-rtmp url: rtmp://demo.srs.com:1935/live/livestream
-m3u8 url: http://demo.srs.com:80/live/livestream.m3u8
-for android: http://demo.srs.com:80/live/livestream.html
+players: http://demo.srs.com/players
+rtmp url: rtmp://demo.srs.com/live/livestream
+m3u8 url: http://demo.srs.com/live/livestream.m3u8
+for android: http://demo.srs.com/live/livestream.html
 </pre>
 
-<p><strong>step 9(optinal):</strong> play live stream auto transcoded<br></p>
+<p><strong>step 10(optinal):</strong> play live stream auto transcoded<br></p>
 
 <pre>
-rtmp url: rtmp://demo.srs.com:1935/live/livestream_ld
-m3u8 url: http://demo.srs.com:80/live/livestream_ld.m3u8
-for android: http://demo.srs.com:80/live/livestream_ld.html
-rtmp url: rtmp://demo.srs.com:1935/live/livestream_sd
-m3u8 url: http://demo.srs.com:80/live/livestream_sd.m3u8
-for android: http://demo.srs.com:80/live/livestream_sd.html
+rtmp url: rtmp://demo.srs.com/live/livestream_ld
+m3u8 url: http://demo.srs.com/live/livestream_ld.m3u8
+for android: http://demo.srs.com/live/livestream_ld.html
+rtmp url: rtmp://demo.srs.com/live/livestream_sd
+m3u8 url: http://demo.srs.com/live/livestream_sd.m3u8
+for android: http://demo.srs.com/live/livestream_sd.html
 </pre>
 
-<p><strong>step 10(optinal):</strong> play live stream auto forwarded, the hls dir change to /forward<br></p>
+<p><strong>step 11(optinal):</strong> play live stream auto forwarded, the hls dir change to /forward<br></p>
 
 <pre>
 rtmp url: rtmp://demo.srs.com:19350/live/livestream
-m3u8 url: http://demo.srs.com:80/forward/live/livestream.m3u8
-for android: http://demo.srs.com:80/forward/live/livestream.html
+m3u8 url: http://demo.srs.com/forward/live/livestream.m3u8
+for android: http://demo.srs.com/forward/live/livestream.html
 rtmp url: rtmp://demo.srs.com:19350/live/livestream_ld
-m3u8 url: http://demo.srs.com:80/forward/live/livestream_ld.m3u8
-for android: http://demo.srs.com:80/forward/live/livestream_ld.html
+m3u8 url: http://demo.srs.com/forward/live/livestream_ld.m3u8
+for android: http://demo.srs.com/forward/live/livestream_ld.html
 rtmp url: rtmp://demo.srs.com:19350/live/livestream_sd
-m3u8 url: http://demo.srs.com:80/forward/live/livestream_sd.m3u8
-for android: http://demo.srs.com:80/forward/live/livestream_sd.html
+m3u8 url: http://demo.srs.com/forward/live/livestream_sd.m3u8
+for android: http://demo.srs.com/forward/live/livestream_sd.html
 </pre>
 
-<p><strong>step 11(optinal):</strong> modify the config and reload it (all features support reload)<br></p>
+<p><strong>step 12(optinal):</strong> modify the config and reload it (all features support reload)<br></p>
 
 <pre>
 killall -1 srs
@@ -192,7 +210,37 @@ killall -s SIGHUP srs
 | Flash,    |   +-&gt; Fowarder ---------+-&gt; RTMP Server  |
 | XSPLIT,   |   +-&gt; Transcoder -------+-&gt; RTMP Server  |
 |  ...)     |   +-&gt; DVR --------------+-&gt; FILE         |
+|           |   +-&gt; BandwidthTest-----+-&gt; Flash/StLoad |
 +-----------+-------------------------+----------------+
+</pre>
+
+<p>Bandwidth Test Workflow:</p>
+
+<pre>
+   +------------+                    +----------+
+   |  Client    |                    |  Server  |
+   +-----+------+                    +-----+----+
+         |                                 |
+         |   connect vhost-------------&gt;   |
+         |   &lt;-----------result(success)   |
+         |                                 |
+         |   &lt;----------call(start play)   |
+         |   result(playing)----------&gt;    |
+         |   &lt;-------------data(playing)   |
+         |   &lt;-----------call(stop play)   |
+         |   result(stopped)----------&gt;    |
+         |                                 |
+         |   &lt;-------call(start publish)   |
+         |   result(publishing)-------&gt;    |
+         |   data(publishing)---------&gt;    |
+         |   &lt;--------call(stop publish)   |
+         |   result(stopped)(1)-------&gt;    |
+         |                                 |
+         |   &lt;--------------------report   |
+         |   final(2)-----------------&gt;    |
+         |           &lt;END&gt;                 |
+         
+@see: class SrsBandwidth comments.
 </pre>
 
 <h3>
@@ -247,9 +295,13 @@ killall -s SIGHUP srs
 </li>
 <li>support http callback api hooks(for authentication and injection).<br>
 </li>
-<li>[plan] support network based cli and json result.<br>
+<li>support bandwidth test api and flash client.<br>
 </li>
-<li>[plan] support bandwidth test api and flash client.<br>
+<li>player, publisher(encoder), and demo pages(jquery+bootstrap). <br>
+</li>
+<li>[dev] demo video meeting or chat(srs+cherrypy+jquery+bootstrap). <br>
+</li>
+<li>[plan] support network based cli and json result.<br>
 </li>
 <li>[plan] support adobe flash refer/token/swf verification.<br>
 </li>
@@ -343,6 +395,9 @@ usr sys idl wai hiq siq| read  writ| recv  send|  in   out | int   csw
 <a name="history" class="anchor" href="#history"><span class="octicon octicon-link"></span></a>History</h3>
 
 <ul>
+<li>v0.9, 2013-12-22, merge from wenjie, support banwidth test.</li>
+<li>v0.9, 2013-12-22, merge from wenjie: support set chunk size at vhost level</li>
+<li>v0.9, 2013-12-21, add <a href="http://demo.srs.com/players">players</a> for play and publish.</li>
 <li>v0.9, 2013-12-15, ensure the HLS(ts) is continous when republish stream.</li>
 <li>v0.9, 2013-12-15, fix the hls reload bug, feed it the sequence header.</li>
 <li>v0.9, 2013-12-15, refine protocol, use int64_t timestamp for ts and jitter.</li>
