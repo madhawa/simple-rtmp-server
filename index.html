@@ -39,35 +39,60 @@ srs is a simple, high-performance, running in single process, origin live server
 srs supports vhost, rtmp, HLS, transcoding, forward, http hooks. <br>
 blog: <a href="http://blog.csdn.net/win_lin">http://blog.csdn.net/win_lin</a> <br>
 see also: <a href="https://github.com/winlinvip/simple-rtmp-server">https://github.com/winlinvip/simple-rtmp-server</a> <br>
-see also: <a href="http://winlinvip.github.io/simple-rtmp-server">http://winlinvip.github.io/simple-rtmp-server</a></p>
+see also: <a href="http://winlinvip.github.io/simple-rtmp-server">http://winlinvip.github.io/simple-rtmp-server</a> <br>
+TencentQQ: <a href="http://url.cn/WAHICw">http://url.cn/WAHICw</a> (Group: 212189142)</p>
 
 <h3>
 <a name="contributors" class="anchor" href="#contributors"><span class="octicon octicon-link"></span></a>Contributors</h3>
 
 <p>winlin(<a href="#">winterserver</a>): <a href="http://blog.csdn.net/win_lin">http://blog.csdn.net/win_lin</a> <br>
 wenjie(<a href="https://github.com/wenjiegit/simple-rtmp-server">wenjiegit</a>): <a href="http://blog.chinaunix.net/uid/25006789.html">http://blog.chinaunix.net/uid/25006789.html</a> <br>
-who is the contributors: <br>
+about the contributors: <br>
 1. contribute important features to srs. <br>
 2. the name of all contributors will send in the response of NetConnection.connect and metadata. </p>
 
 <h3>
-<a name="usage" class="anchor" href="#usage"><span class="octicon octicon-link"></span></a>Usage</h3>
+<a name="usagesimple" class="anchor" href="#usagesimple"><span class="octicon octicon-link"></span></a>Usage(simple)</h3>
+
+<p><strong>step -1:</strong> get srs<br></p>
+
+<pre>
+git clone https://github.com/winlinvip/simple-rtmp-server &amp;&amp;
+cd simple-rtmp-server/trunk
+</pre>
+
+<p><strong>step 0:</strong> build srs system.<br></p>
+
+<pre>
+bash scripts/build.sh
+</pre>
+
+<p><strong>step 1:</strong> start srs all demo features.<br></p>
+
+<pre>
+bash scripts/run.sh
+</pre>
+
+<p><strong>step 2:</strong> srs live show: <a href="http://your-server-ip">http://your-server-ip</a> <br><strong>step 3:</strong> stop srs demo<br></p>
+
+<pre>
+bash scripts/stop.sh
+</pre>
+
+<h3>
+<a name="usagedetail" class="anchor" href="#usagedetail"><span class="octicon octicon-link"></span></a>Usage(detail)</h3>
+
+<p><strong>step 0:</strong> get srs <br></p>
+
+<pre>
+git clone https://github.com/winlinvip/simple-rtmp-server &amp;&amp;
+cd simple-rtmp-server/trunk
+</pre>
 
 <p><strong>step 1:</strong> build srs <br></p>
 
 <pre>
-tar xf simple-rtmp-server-*.*.tar.gz
-cd simple-rtmp-server-*.*/trunk
-./configure --with-ssl --with-hls --with-ffmpeg --with-http
-make
-</pre>
-
-<p>or get the latest code:<br></p>
-
-<pre>
-git clone  https://github.com/winlinvip/simple-rtmp-server
-cd simple-rtmp-server/trunk
-./configure --with-ssl --with-hls --with-ffmpeg --with-http
+./configure --with-ssl --with-hls --with-ffmpeg --with-http &amp;&amp; make
 </pre>
 
 <p><strong>step 2:</strong> start srs <br></p>
@@ -299,7 +324,7 @@ killall -s SIGHUP srs
 </li>
 <li>player, publisher(encoder), and demo pages(jquery+bootstrap). <br>
 </li>
-<li>[dev] demo video meeting or chat(srs+cherrypy+jquery+bootstrap). <br>
+<li>demo video meeting or chat(srs+cherrypy+jquery+bootstrap). <br>
 </li>
 <li>[plan] support network based cli and json result.<br>
 </li>
@@ -349,6 +374,8 @@ usr sys idl wai hiq siq| read  writ| recv  send|  in   out | int   csw
 <a name="releases" class="anchor" href="#releases"><span class="octicon octicon-link"></span></a>Releases</h3>
 
 <ul>
+<li>2013-12-25, <a href="https://github.com/winlinvip/simple-rtmp-server/releases/tag/0.9">release v0.9</a>, support bandwidth test, add player/encoder/chat demos. 20926 lines.<br>
+</li>
 <li>2013-12-08, <a href="https://github.com/winlinvip/simple-rtmp-server/releases/tag/0.8">release v0.8</a>, support http hooks callback, update st-load. 19186 lines.<br>
 </li>
 <li>2013-12-03, <a href="https://github.com/winlinvip/simple-rtmp-server/releases/tag/0.7">release v0.7</a>, support live stream transcoding. 17605 lines.<br>
@@ -371,6 +398,8 @@ usr sys idl wai hiq siq| read  writ| recv  send|  in   out | int   csw
 <a name="compare" class="anchor" href="#compare"><span class="octicon octicon-link"></span></a>Compare</h3>
 
 <ul>
+<li>srs v0.9: 20926 lines. player/encoder/chat demos. bandwidth test for encoder/CDN.<br>
+</li>
 <li>srs v0.8: 19186 lines. implements http hooks refer to <a href="https://github.com/arut/nginx-rtmp-module">nginx-rtmp</a>. <br>
 </li>
 <li>srs v0.7: 17605 lines. implements transcoding(FFMPEG) feature refer to <a href="http://www.wowza.com">wowza</a>. <br>
@@ -395,6 +424,9 @@ usr sys idl wai hiq siq| read  writ| recv  send|  in   out | int   csw
 <a name="history" class="anchor" href="#history"><span class="octicon octicon-link"></span></a>History</h3>
 
 <ul>
+<li>v0.9, 2013-12-25, <a href="https://github.com/winlinvip/simple-rtmp-server/releases/tag/0.9">v0.9</a> released. 20926 lines.</li>
+<li>v0.9, 2013-12-25, fix the bitrate bug(in Bps), use enhanced microphone.</li>
+<li>v0.9, 2013-12-22, demo video meeting or chat(srs+cherrypy+jquery+bootstrap).</li>
 <li>v0.9, 2013-12-22, merge from wenjie, support banwidth test.</li>
 <li>v0.9, 2013-12-22, merge from wenjie: support set chunk size at vhost level</li>
 <li>v0.9, 2013-12-21, add <a href="http://demo.srs.com/players">players</a> for play and publish.</li>
