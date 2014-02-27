@@ -69,7 +69,42 @@ answer newbie questions, and generally made SRS that much better: <a href="https
 <p><a href="https://github.com/winlinvip/simple-rtmp-server/wiki">https://github.com/winlinvip/simple-rtmp-server/wiki</a></p>
 
 <h3>
-<a name="usagesimple" class="anchor" href="#usagesimple"><span class="octicon octicon-link"></span></a>Usage(simple)</h3>
+<a name="usagertmp-for-rtmp-only" class="anchor" href="#usagertmp-for-rtmp-only"><span class="octicon octicon-link"></span></a>Usage(RTMP) for RTMP only</h3>
+
+<p><strong>Requires: Centos6.x 64bits, others see <a href="https://github.com/winlinvip/simple-rtmp-server/wiki/Build">Build</a></strong><br><strong>Step 0:</strong> get SRS <br></p>
+
+<pre>
+git clone https://github.com/winlinvip/simple-rtmp-server &amp;&amp;
+cd simple-rtmp-server/trunk
+</pre>
+
+<p><strong>Step 1:</strong> build SRS <br></p>
+
+<pre>
+./configure --with-ssl --without-hls --without-ffmpeg --without-http &amp;&amp; make
+</pre>
+
+<p><strong>Step 2:</strong> start SRS <br></p>
+
+<pre>
+./objs/srs -c conf/srs.conf
+</pre>
+
+<p><strong>Step 3:</strong> <a href="http://www.adobe.com/cn/products/flash-media-encoder.html">Adobe FMLE</a> publish demo live stream <br></p>
+
+<pre>
+FMS URL: rtmp://192.168.1.170/live
+Stream:  livestream
+</pre>
+
+<p><strong>Step 4:</strong> <a href="http://www.videolan.org/vlc/">VLC (2.1+)</a> play live stream. <br></p>
+
+<pre>
+rtmp url: rtmp://192.168.1.170/live/livestream
+</pre>
+
+<h3>
+<a name="usagesimple-for-all-features" class="anchor" href="#usagesimple-for-all-features"><span class="octicon octicon-link"></span></a>Usage(simple) for all features</h3>
 
 <p><strong>Requires: Centos6.x 64bits, others see <a href="https://github.com/winlinvip/simple-rtmp-server/wiki/Build">Build</a></strong><br><strong>Step -1:</strong> get SRS<br></p>
 
@@ -97,7 +132,7 @@ bash scripts/stop.sh
 </pre>
 
 <h3>
-<a name="usagedetail" class="anchor" href="#usagedetail"><span class="octicon octicon-link"></span></a>Usage(detail)</h3>
+<a name="usagedetail-for-all-features" class="anchor" href="#usagedetail-for-all-features"><span class="octicon octicon-link"></span></a>Usage(detail) for all features</h3>
 
 <p><strong>Requires: Centos6.x 64bits, others see <a href="https://github.com/winlinvip/simple-rtmp-server/wiki/Build">Build</a></strong><br><strong>Step 0:</strong> get SRS <br></p>
 
@@ -422,12 +457,12 @@ Remark:
 <a name="performance" class="anchor" href="#performance"><span class="octicon octicon-link"></span></a>Performance</h3>
 
 <ol>
-<li>300 connections, 150Mbps, 500kbps, CPU 18.8%, 5956KB.</li>
-<li>600 connections, 300Mbps, 500kbps, CPU 32.1%, 9808KB.</li>
-<li>900 connections, 450Mbps, 500kbps, CPU 49.9%, 11MB.</li>
-<li>1200 connections, 600Mbps, 500kbps, CPU 72.4%, 15MB.</li>
-<li>1500 connections, 750Mbps, 500kbps, CPU 81.9%, 28MB.</li>
-<li>1800 connections, 900Mbps, 500kbps, CPU 90.2%, 41MB.</li>
+<li> 300 connections, 150Mbps, 500kbps, CPU 18.8%, MEM 5956KB.</li>
+<li> 600 connections, 300Mbps, 500kbps, CPU 32.1%, MEM 9808KB.</li>
+<li> 900 connections, 450Mbps, 500kbps, CPU 49.9%, MEM 11MB.</li>
+<li>1200 connections, 600Mbps, 500kbps, CPU 72.4%, MEM 15MB.</li>
+<li>1500 connections, 750Mbps, 500kbps, CPU 81.9%, MEM 28MB.</li>
+<li>1800 connections, 900Mbps, 500kbps, CPU 90.2%, MEM 41MB.</li>
 </ol><pre>
 [winlin@dev6 srs]$ dstat
 ----total-cpu-usage---- -dsk/total- ---net/lo-- ---paging-- ---system--
