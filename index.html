@@ -35,8 +35,8 @@
 <a name="simple-rtmp-server" class="anchor" href="#simple-rtmp-server"><span class="octicon octicon-link"></span></a>Simple-RTMP-Server</h1>
 
 <p>SRS(SIMPLE RTMP Server) over state-threads created in 2013.<br>
-SRS is a simple, high-performance, running in single process, origin live server.<br>
-SRS supports vhost, rtmp, HLS, transcoding, forward, http hooks. <br>
+SRS is a simple, RTMP/HLS, high-performance, single(plan)/multiple processes, edge(plan)/origin live server.<br>
+SRS supports <a href="https://github.com/winlinvip/simple-rtmp-server/wiki/RtmpUrlVhost">vhost</a>, rtmp, <a href="https://github.com/winlinvip/simple-rtmp-server/wiki/DeliveryHLS">HLS</a>, transcoding, forward, <a href="https://github.com/winlinvip/simple-rtmp-server/wiki/HTTPCallback">http hooks</a>. <br>
 Blog: <a href="http://blog.csdn.net/win_lin">http://blog.csdn.net/win_lin</a> <br>
 See also: <a href="https://github.com/winlinvip/simple-rtmp-server">https://github.com/winlinvip/simple-rtmp-server</a> <br>
 See also: <a href="http://winlinvip.github.io/simple-rtmp-server">http://winlinvip.github.io/simple-rtmp-server</a> <br>
@@ -234,7 +234,7 @@ killall -s SIGHUP srs
 +---------------+---------------+-----------+----------+
 |              Network(state-threads)                  |
 +------------------------------------------------------+
-|      All Linux(RHEL,Centos,Ubuntu,Fedora...)         |
+|      All Linux(RHEL,CentOS,Ubuntu,Fedora...)         |
 +------------------------------------------------------+
 </pre>
 
@@ -252,8 +252,58 @@ killall -s SIGHUP srs
 | Flash,    |   +-&gt; Fowarder ---------+-&gt; RTMP Server  |
 | XSPLIT,   |   +-&gt; Transcoder -------+-&gt; RTMP Server  |
 |  ...)     |   +-&gt; DVR --------------+-&gt; FILE         |
-|           |   +-&gt; BandwidthTest-----+-&gt; Flash/StLoad |
+|           |   +-&gt; BandwidthTest ----+-&gt; Flash/StLoad |
 +-----------+-------------------------+----------------+
+</pre>
+
+<p>(plan) RTMP cluster(origin/edge) Architecture:<br>
+Remark: cluster over forward, see <a href="https://github.com/winlinvip/simple-rtmp-server/wiki/Cluster">Cluster</a></p>
+
+<pre>
++---------+       +-----------------+     +-----------------------+ 
++ Encoder +--+--&gt;-+  SRS(RTMP Edge) +---&gt;-+     (RTMP Origin)     | 
++---------+  |    +-----------------+     |   SRS/FMS/NGINX-RTMP  |
+             |                            |    Red5/HELIX/CRTMP   |
+             +--------------------------&gt;-+         ......        |
+                                          +-----------------------+ 
+Schema#1: Any RTMP encoder push RTMP stream to RTMP (origin/edge)server,
+    where SRS RTMP Edge server will forward stream to origin.
+
+
++-------------+    +-----------------+      +--------------------+
+| RTMP Origin +--&gt;-+  SRS(RTMP Edge) +--+-&gt;-+  Client(RTMP/HLS)  |
++-------------+    +-----------------+  |   |  Flash/IOS/Android |
+                                        |   +--------------------+
+                                        |
+                                        |   +-----------------+
+                                        +-&gt;-+  SRS(RTMP Edge) +
+                                            +-----------------+
+Schema#2: SRS RTMP Edge server pull stream from origin (or upstream SRS 
+    RTMP Edge server), then delivery to Client.
+</pre>
+
+<p>(plan) SRS Multiple processes Architecture:<br></p>
+
+<pre>
+                                 +---------------------------+
+                           +-----+ worker process(3)         |
++----------------+         |     +---------------------------+
+| master process |---(2)---+           
+|   (1)manager   |         |     +---------------------------+
++----------------+         +-----+ worker process N          |
+                           |     +---------------------------+
+                           |
+                           |     +---------------------------+
+                           +-----+ bandwidth test process(4) |
+                                 +---------------------------+
+Remark:
+(1) master process: to fork processes, schedule fd(client) to the "right" 
+    process, forward messages between processes
+(2) communication: master process use unix domain socket to communicate 
+    with worker processes.
+(3) worker process: to provide RTMP streaming service, generate HLS files.
+(4) bandwidth test process: for all bandwidth test request, to make the 
+    bandwidth testing has minimal effect to streaming service
 </pre>
 
 <p>Bandwidth Test Workflow:</p>
@@ -302,17 +352,17 @@ killall -s SIGHUP srs
 <li>
 <a href="https://github.com/winlinvip/simple-rtmp-server/wiki/Performance">High-performance</a>: single-thread, async socket, event/st-thread driven.<br>
 </li>
-<li>NO edge server, origin server only.<br>
+<li>With RTMP edge server, support origin server.<br>
 </li>
 <li>NO vod streaming, live streaming only.<br>
 </li>
-<li>NO multiple processes, single process only.<br>
+<li>With multiple processes, support single process.<br>
 </li>
 <li>Support vhost, support __defaultVhost__.<br>
 </li>
 <li>Support adobe rtmp live streaming.<br>
 </li>
-<li>Support apple hls(m3u8) live streaming.<br>
+<li>Support apple <a href="https://github.com/winlinvip/simple-rtmp-server/wiki/DeliveryHLS">HLS(m3u8)</a> live streaming.<br>
 </li>
 <li>Support reload config to enable changes.<br>
 </li>
@@ -336,7 +386,7 @@ killall -s SIGHUP srs
 </li>
 <li>Support audio transcode only, speex/mp3 to aac<br>
 </li>
-<li>Support http callback api hooks(for authentication and injection).<br>
+<li>Support <a href="https://github.com/winlinvip/simple-rtmp-server/wiki/HTTPCallback">http callback api hooks</a>(for authentication and injection).<br>
 </li>
 <li>Support bandwidth test api and flash client.<br>
 </li>
@@ -346,21 +396,27 @@ killall -s SIGHUP srs
 </li>
 <li>[dev] Full documents in wiki, in chineses. <br>
 </li>
+<li>[plan] Support HLS cluster, use RTMP ATC to generate the TS<br>
+</li>
+<li>[plan] Support RTMP edge server, push/pull stream from any RTMP server<br>
+</li>
+<li>[plan] Support multiple processes, for both origin and edge<br>
+</li>
 <li>[plan] Support network based cli and json result.<br>
 </li>
-<li>[plan] Support adobe flash refer/token/swf verification.<br>
+<li>[no-plan] Support adobe flash refer/token/swf verification.<br>
 </li>
-<li>[plan] Support adobe amf3 codec.<br>
+<li>[no-plan] Support adobe amf3 codec.<br>
 </li>
-<li>[plan] Support dvr(record live to vod file)<br>
+<li>[no-plan] Support dvr(record live to vod file)<br>
 </li>
-<li>[plan] Support FMS edge protocol<br>
+<li>[no-plan] Support encryption: RTMPE/RTMPS, HLS DRM<br>
 </li>
-<li>[plan] Support encryption: RTMPE/RTMPS, HLS DRM<br>
+<li>[no-plan] Support RTMPT, http to tranverse firewalls<br>
 </li>
-<li>[plan] Support RTMPT, http to tranverse firewalls<br>
+<li>[no-plan] Support file source, transcoding file to live stream<br>
 </li>
-<li>[plan] Support file source, transcoding file to live stream<br>
+<li>[no-plan] Support RTSP<br>
 </li>
 </ol><h3>
 <a name="performance" class="anchor" href="#performance"><span class="octicon octicon-link"></span></a>Performance</h3>
@@ -443,6 +499,13 @@ usr sys idl wai hiq siq| read  writ| recv  send|  in   out | int   csw
 <a name="history" class="anchor" href="#history"><span class="octicon octicon-link"></span></a>History</h3>
 
 <ul>
+<li>v1.0, 2014-02-27, add wiki <a href="https://github.com/winlinvip/simple-rtmp-server/wiki/LowLatency">LowLatency</a>, <a href="https://github.com/winlinvip/simple-rtmp-server/wiki/HTTPCallback">HTTPCallback</a>, <a href="https://github.com/winlinvip/simple-rtmp-server/wiki/ServerSideScript">ServerSideScript</a>, <a href="https://github.com/winlinvip/simple-rtmp-server/wiki/IDE">IDE</a>
+</li>
+<li>v1.0, 2014-01-19, add wiki <a href="https://github.com/winlinvip/simple-rtmp-server/wiki/DeliveryHLS">DeliveryHLS</a>
+</li>
+<li>v1.0, 2014-01-12, add wiki <a href="https://github.com/winlinvip/simple-rtmp-server/wiki/HowToAskQuestion">HowToAskQuestion</a>, <a href="https://github.com/winlinvip/simple-rtmp-server/wiki/RtmpUrlVhost">RtmpUrlVhost</a>
+</li>
+<li>v1.0, 2014-01-11, fix jw/flower player pause bug, which send closeStream actually.</li>
 <li>v1.0, 2014-01-05, add wiki <a href="https://github.com/winlinvip/simple-rtmp-server/wiki/Build">Build</a>, <a href="https://github.com/winlinvip/simple-rtmp-server/wiki/Performance">Performance</a>, <a href="https://github.com/winlinvip/simple-rtmp-server/wiki/Cluster">Cluster</a>
 </li>
 <li>v1.0, 2014-01-01, change listen(512), chunk-size(60000), to improve performance.</li>
@@ -462,7 +525,7 @@ usr sys idl wai hiq siq| read  writ| recv  send|  in   out | int   csw
 <li>v0.9, 2013-12-14, refine the thread model for the retry threads.</li>
 <li>v0.9, 2013-12-10, auto install depends tools/libs on centos/ubuntu.</li>
 <li>v0.8, 2013-12-08, <a href="https://github.com/winlinvip/simple-rtmp-server/releases/tag/0.8">v0.8</a> released. 19186 lines.</li>
-<li>v0.8, 2013-12-08, support http hooks: on_connect/close/publish/unpublish/play/stop.</li>
+<li>v0.8, 2013-12-08, support <a href="https://github.com/winlinvip/simple-rtmp-server/wiki/HTTPCallback">http hooks</a>: on_connect/close/publish/unpublish/play/stop.</li>
 <li>v0.8, 2013-12-08, support multiple http hooks for a event.</li>
 <li>v0.8, 2013-12-07, support http callback hooks, on_connect.</li>
 <li>v0.8, 2013-12-07, support network based cli and json result, add CherryPy 3.2.4.</li>
@@ -516,7 +579,7 @@ usr sys idl wai hiq siq| read  writ| recv  send|  in   out | int   csw
 <li>v0.1, 2013-10-20, support FMLE/FFMPEG publish live streaming.</li>
 <li>v0.1, 2013-10-18, support rtmp message2chunk protocol(send_message).</li>
 <li>v0.1, 2013-10-17, support rtmp chunk2message protocol(recv_message).</li>
-</ul><p>beijing, 2013
+</ul><p>Beijing, 2013<br>
 Winlin</p>
       </section>
     </div>
