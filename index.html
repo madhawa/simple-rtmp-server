@@ -273,6 +273,22 @@ killall -s SIGHUP srs
 +------------------------------------------------------+
 </pre>
 
+<p>Modularity Architecture:</p>
+
+<pre>
++------------------------------------------------------+
+|             Main(srs/bandwidth/librtmp)              |
++------------------------------------------------------+
+|           App(Server/Client application)             |
++------------------------------------------------------+
+|               RTMP(Protocol stack)                   |
++------------------------------------------------------+
+|      Kernel(depends on Core, provides error/log)     |
++------------------------------------------------------+
+|         Core(depends only on system apis)            |
++------------------------------------------------------+
+</pre>
+
 <p>Stream Architecture:</p>
 
 <pre>
@@ -431,6 +447,12 @@ Remark:
 </li>
 <li>[dev] Full documents in wiki, in chineses. <br>
 </li>
+<li>[dev] Support RTMP(play-publish) library: srs-librtmp<br>
+</li>
+<li>[plan] Support RTSP(RTP, SDP)<br>
+</li>
+<li>[plan] Support system utest<br>
+</li>
 <li>[plan] Support HLS cluster, use RTMP ATC to generate the TS<br>
 </li>
 <li>[plan] Support RTMP edge server, push/pull stream from any RTMP server<br>
@@ -450,8 +472,6 @@ Remark:
 <li>[no-plan] Support RTMPT, http to tranverse firewalls<br>
 </li>
 <li>[no-plan] Support file source, transcoding file to live stream<br>
-</li>
-<li>[no-plan] Support RTSP<br>
 </li>
 </ol><h3>
 <a name="performance" class="anchor" href="#performance"><span class="octicon octicon-link"></span></a>Performance</h3>
@@ -534,6 +554,13 @@ usr sys idl wai hiq siq| read  writ| recv  send|  in   out | int   csw
 <a name="history" class="anchor" href="#history"><span class="octicon octicon-link"></span></a>History</h3>
 
 <ul>
+<li>v1.0, 2014-03-02, add wiki <a href="https://github.com/winlinvip/simple-rtmp-server/wiki/SrsLibrtmp">srs-librtmp</a>, <a href="https://github.com/winlinvip/simple-rtmp-server/wiki/SrsLinuxArm">srs for arm</a>, <a href="https://github.com/winlinvip/simple-rtmp-server/wiki/Product">product</a>
+</li>
+<li>v1.0, 2014-03-02, srs-librtmp, client publish/play library like librtmp.</li>
+<li>v1.0, 2014-03-01, modularity, extract core/kernel/rtmp/app/main module.</li>
+<li>v1.0, 2014-02-28, support arm build(SRS/ST), add ssl to 3rdparty package.</li>
+<li>v1.0, 2014-02-28, add wiki <a href="https://github.com/winlinvip/simple-rtmp-server/wiki/Build">BuildArm</a>, <a href="https://github.com/winlinvip/simple-rtmp-server/wiki/FFMPEG">FFMPEG</a>, <a href="https://github.com/winlinvip/simple-rtmp-server/wiki/Reload">Reload</a>
+</li>
 <li>v1.0, 2014-02-27, add wiki <a href="https://github.com/winlinvip/simple-rtmp-server/wiki/LowLatency">LowLatency</a>, <a href="https://github.com/winlinvip/simple-rtmp-server/wiki/HTTPCallback">HTTPCallback</a>, <a href="https://github.com/winlinvip/simple-rtmp-server/wiki/ServerSideScript">ServerSideScript</a>, <a href="https://github.com/winlinvip/simple-rtmp-server/wiki/IDE">IDE</a>
 </li>
 <li>v1.0, 2014-01-19, add wiki <a href="https://github.com/winlinvip/simple-rtmp-server/wiki/DeliveryHLS">DeliveryHLS</a>
