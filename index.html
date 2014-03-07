@@ -36,7 +36,7 @@
 
 <p>SRS(SIMPLE RTMP Server) over state-threads created in 2013.<br>
 SRS is a simple, RTMP/HLS, high-performance, single(plan)/multiple processes, edge(plan)/origin live server.<br>
-SRS supports <a href="https://github.com/winlinvip/simple-rtmp-server/wiki/RtmpUrlVhost">vhost</a>, rtmp, <a href="https://github.com/winlinvip/simple-rtmp-server/wiki/DeliveryHLS">HLS</a>, transcoding, forward, <a href="https://github.com/winlinvip/simple-rtmp-server/wiki/HTTPCallback">http hooks</a>. <br>
+SRS supports <a href="https://github.com/winlinvip/simple-rtmp-server/wiki/RtmpUrlVhost">vhost</a>, rtmp(encoder push, client/edge pull), ingester(srs pull), <a href="https://github.com/winlinvip/simple-rtmp-server/wiki/DeliveryHLS">HLS</a>, <a href="https://github.com/winlinvip/simple-rtmp-server/wiki/FFMPEG">transcoding</a>, <a href="https://github.com/winlinvip/simple-rtmp-server/wiki/FFMPEG">forward</a>, <a href="https://github.com/winlinvip/simple-rtmp-server/wiki/HTTPCallback">http hooks</a>. <br>
 Blog: <a href="http://blog.csdn.net/win_lin">http://blog.csdn.net/win_lin</a> <br>
 See also: <a href="https://github.com/winlinvip/simple-rtmp-server">https://github.com/winlinvip/simple-rtmp-server</a> <br>
 See also: <a href="http://winlinvip.github.io/simple-rtmp-server">http://winlinvip.github.io/simple-rtmp-server</a> <br>
@@ -292,19 +292,29 @@ killall -s SIGHUP srs
 <p>Stream Architecture:</p>
 
 <pre>
-        +---------+              +----------+ 
-        + Publish +              +  Deliver | 
-        +---|-----+              +----|-----+ 
-+-----------+-------------------------+----------------+
-| Encoder   | SRS(Simple RTMP Server) |     Client     |
-+-----------+-------------------------+----------------+
-| (FMLE,    |   +-&gt; RTMP protocol ----+-&gt; Flash Player |
-| FFMPEG, --+-&gt; +-&gt; HLS/NGINX --------+-&gt; m3u8 player  |
-| Flash,    |   +-&gt; Fowarder ---------+-&gt; RTMP Server  |
-| XSPLIT,   |   +-&gt; Transcoder -------+-&gt; RTMP Server  |
-|  ...)     |   +-&gt; DVR --------------+-&gt; FILE         |
-|           |   +-&gt; BandwidthTest ----+-&gt; Flash/StLoad |
-+-----------+-------------------------+----------------+
+               +---------+              +----------+
+               + Publish +              +  Deliver |
+               +---|-----+              +----|-----+
++------------------+-------------------------+----------------+
+|     Input        | SRS(Simple RTMP Server) |     Output     |
++------------------+-------------------------+----------------+
+|    Encoder(1)    |   +-&gt; RTMP protocol ----+-&gt; Flash Player |
+|  (FMLE,FFMPEG, --+-&gt;-+-&gt; HLS/NGINX --------+-&gt; m3u8 player  |
+|  Flash,XSPLIT,   |   +-&gt; Fowarder ---------+-&gt; RTMP Server  |
+|  ......)         |   +-&gt; Transcoder -------+-&gt; RTMP Server  |
+|                  |   +-&gt; DVR --------------+-&gt; FILE         |
+|                  |   +-&gt; BandwidthTest ----+-&gt; Flash/StLoad |
++------------------+                         |                |
+|  MediaSource(2)  |                         |                |
+|  (RTSP,FILE,     |                         |                |
+|   HTTP,HLS,    --+-&gt;-- Ingester -----------+-&gt; SRS          |
+|   Device,        |                         |                |
+|   ......)        |                         |                |
++------------------+-------------------------+----------------+
+
+Remark:
+(1) Encoder: encoder must push RTMP stream to SRS server.
+(2) MediaSource: any media source, which can be ingest by ffmpeg.
 </pre>
 
 <p>(plan) RTMP cluster(origin/edge) Architecture:<br>
@@ -333,28 +343,57 @@ Schema#2: SRS RTMP Edge server pull stream from origin (or upstream SRS
     RTMP Edge server), then delivery to Client.
 </pre>
 
-<p>(plan) SRS Multiple processes Architecture:<br></p>
+<p>(plan) SRS Multiple processes Architecture(design by wenjie):<br></p>
 
 <pre>
-                                 +---------------------------+
-                           +-----+ worker process(3)         |
-+----------------+         |     +---------------------------+
-| master process |---(2)---+           
-|   (1)manager   |         |     +---------------------------+
-+----------------+         +-----+ worker process N          |
-                           |     +---------------------------+
-                           |
-                           |     +---------------------------+
-                           +-----+ bandwidth test process(4) |
-                                 +---------------------------+
+                  +-------------------+          +-----------+
+                  |   upnode server   |          +   client  +
+                  +---------+---------+          +-----+-----+
+              --------------+------------network-------+---------
+                            |                          |
+ +-----------+         +----+-----------+         +----+-----------+
+ |   master  +--fork-&gt;-+ back source(1) +--&gt;-pull-+ stream 1-N(2)  +
+ +-----+-----+         +----------------+         +-------+--------+
+       |                                                  |
+       +-------------------------------------fork---&gt;-----+
+
 Remark:
-(1) master process: to fork processes, schedule fd(client) to the "right" 
-    process, forward messages between processes
-(2) communication: master process use unix domain socket to communicate 
-    with worker processes.
-(3) worker process: to provide RTMP streaming service, generate HLS files.
-(4) bandwidth test process: for all bandwidth test request, to make the 
-    bandwidth testing has minimal effect to streaming service
+(1) back source process: create by master process, get stream from 
+    upnode server if edge, create stream if origin, serve the stream 
+    process.
+(2) stream process: create by master process, get stream from back
+    source process, serve the client.
+Remark:
+(a) This multiple processes architecture is design by wenjie, it's a
+    very simple and powerful multiple process architecture, for the
+    master no need to pass between stream process.
+(b) The CLI architecture is similar to this, instead, cli process
+    will collect informations from all stream process, master process
+    only send signals to child processes.
+</pre>
+
+<p>CLI Architecture:</p>
+
+<pre>
+                       +---------+
+                    +--+ stream1 +---------+
+                    |  +---------+         |
+ +--------+         |  +---------+         |   +-------+
+ | master +--fork-&gt;-+--+ streamN +---amf0--+&gt;--+  cli  +
+ +--------+         |  +---------+         |   +-------+
+                    |  +-------------+     |
+                    +--+ back source +-----+
+                       +-------------+
+Remark:
+(1) master listen the global api port, for example, 33330
+(2) back source and stream processes listen at private api port, 
+    for example, 33331, 33332, 33333
+(3) work processes(stream and back-source), report private api
+    port to master global api port.
+(4) cli connect to master global api port, get all other private
+    api ports
+(5) cli connect to each stream/back-source process to get api data,
+    cli analysis and summary the data, return to user.
 </pre>
 
 <p>Bandwidth Test Workflow:</p>
@@ -445,21 +484,23 @@ Remark:
 </li>
 <li>Demo video meeting or chat(SRS+cherrypy+jquery+bootstrap). <br>
 </li>
-<li>[dev] Full documents in wiki, in chineses. <br>
+<li>Full documents in wiki, in chineses. <br>
 </li>
-<li>[dev] Support RTMP(play-publish) library: srs-librtmp<br>
+<li>Support RTMP(play-publish) library: srs-librtmp<br>
+</li>
+<li>[plan] Support system utest<br>
+</li>
+<li>[plan] Support stream ingester using ffmpeg.<br>
 </li>
 <li>[plan] Support RTSP(RTP, SDP)<br>
 </li>
-<li>[plan] Support system utest<br>
+<li>[plan] Support network based cli and json result.<br>
 </li>
 <li>[plan] Support HLS cluster, use RTMP ATC to generate the TS<br>
 </li>
 <li>[plan] Support RTMP edge server, push/pull stream from any RTMP server<br>
 </li>
 <li>[plan] Support multiple processes, for both origin and edge<br>
-</li>
-<li>[plan] Support network based cli and json result.<br>
 </li>
 <li>[no-plan] Support adobe flash refer/token/swf verification.<br>
 </li>
@@ -554,6 +595,8 @@ usr sys idl wai hiq siq| read  writ| recv  send|  in   out | int   csw
 <a name="history" class="anchor" href="#history"><span class="octicon octicon-link"></span></a>History</h3>
 
 <ul>
+<li>v1.0, 2014-03-06, add gperftools for mem leak detect, mem/cpu profile.</li>
+<li>v1.0, 2014-03-04, add gest framework for utest, build success.</li>
 <li>v1.0, 2014-03-02, add wiki <a href="https://github.com/winlinvip/simple-rtmp-server/wiki/SrsLibrtmp">srs-librtmp</a>, <a href="https://github.com/winlinvip/simple-rtmp-server/wiki/SrsLinuxArm">srs for arm</a>, <a href="https://github.com/winlinvip/simple-rtmp-server/wiki/Product">product</a>
 </li>
 <li>v1.0, 2014-03-02, srs-librtmp, client publish/play library like librtmp.</li>
