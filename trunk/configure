@@ -1,0 +1,455 @@
+#!/bin/bash
+
+#####################################################################################
+# the main output dir, all configure and make output are in this dir.
+#####################################################################################
+# create the main objs
+SRS_OBJS="objs"
+mkdir -p ${SRS_OBJS}
+
+#####################################################################################
+# linux shell color support.
+RED="\\e[31m"
+GREEN="\\e[32m"
+YELLOW="\\e[33m"
+BLACK="\\e[0m"
+
+#####################################################################################
+# parse user options, set the variables like:
+# srs features: SRS_SSL/SRS_HLS/SRS_FFMPEG/SRS_HTTP/SRS_RESEARCH/SRS_UTEST
+# build options: SRS_JOBS
+#####################################################################################
+# parse options, exit with error when parse options invalid.
+. auto/options.sh
+
+# clean the exists
+# do this only when the options is ok.
+if [[ -f Makefile ]]; then
+    make clean
+fi
+
+#####################################################################################
+# generate auto headers file, depends on the finished of options.sh
+#####################################################################################
+# write user options to headers
+SRS_AUTO_HEADERS_H="${SRS_OBJS}/srs_auto_headers.hpp"
+echo "#define SRS_CONFIGURE \"${SRS_CONFIGURE}\"" > $SRS_AUTO_HEADERS_H
+echo "#define SRS_BUILD_DATE \"`date \"+%Y-%m-%d %H:%M:%S\"`\"" >> $SRS_AUTO_HEADERS_H
+echo "#define SRS_BUILD_TS \"`date +%s`\"" >> $SRS_AUTO_HEADERS_H
+
+# apply user options.
+. auto/depends.sh
+
+# new empty line to auto headers file.
+echo "" >> $SRS_AUTO_HEADERS_H
+
+#####################################################################################
+# generate Makefile.
+#####################################################################################
+SRS_MAKEFILE="Makefile"
+
+#####################################################################################
+# srs-librtmp sample entry
+SrsLibrtmpSampleEntry="nossl"
+if [ $SRS_SSL = YES ]; then SrsLibrtmpSampleEntry="ssl";fi
+# utest make entry, (cd utest; make)
+SrsUtestMakeEntry="@echo -e \"ignore utest for it's disabled\""
+if [ $SRS_UTEST = YES ]; then SrsUtestMakeEntry="(cd ${SRS_OBJS}/utest; \$(MAKE))"; fi
+
+#####################################################################################
+# colorful summary
+SrsHlsSummaryColor="\$(YELLOW)(disabled) "; if [ $SRS_HLS = YES ]; then SrsHlsSummaryColor="\$(GREEN)"; fi
+SrsSslSummaryColor="\$(YELLOW)(disabled) "; if [ $SRS_SSL = YES ]; then SrsSslSummaryColor="\$(GREEN)"; fi
+SrsFfmpegSummaryColor="\$(YELLOW)(disabled) "; if [ $SRS_FFMPEG = YES ]; then SrsFfmpegSummaryColor="\$(GREEN)"; fi
+SrsHttpSummaryColor="\$(YELLOW)(disabled) "; if [ $SRS_HTTP = YES ]; then SrsHttpSummaryColor="\$(GREEN)"; fi
+SrsLibrtmpSummaryColor="\$(YELLOW)(disabled) "; if [ $SRS_LIBRTMP = YES ]; then SrsLibrtmpSummaryColor="\$(GREEN)"; fi
+SrsLibrtmpSSLSummaryColor="\$(YELLOW)(disabled) "; if [ $SRS_LIBRTMP = YES ]; then if [ $SRS_SSL = YES ]; then SrsLibrtmpSSLSummaryColor="\$(GREEN)"; fi fi
+SrsBWTCSummaryColor="\$(GREEN)(disabled) "; if [ $SRS_BWTC = YES ]; then SrsBWTCSummaryColor="\$(GREEN)"; fi
+SrsResearchSummaryColor="\$(GREEN)(disabled) "; if [ $SRS_RESEARCH = YES ]; then SrsResearchSummaryColor="\$(GREEN)"; fi
+SrsUtestSummaryColor="\$(YELLOW)(disabled) "; if [ $SRS_UTEST = YES ]; then SrsUtestSummaryColor="\$(GREEN)"; fi
+SrsGperfSummaryColor="\$(GREEN)(disabled) "; if [ $SRS_GPERF = YES ]; then SrsGperfSummaryColor="\$(GREEN)"; fi
+SrsGperfMCSummaryColor="\$(GREEN)(disabled) "; if [ $SRS_GPERF_MC = YES ]; then SrsGperfMCSummaryColor="\$(YELLOW)"; fi
+SrsGperfMPSummaryColor="\$(GREEN)(disabled) "; if [ $SRS_GPERF_MP = YES ]; then SrsGperfMPSummaryColor="\$(YELLOW)"; fi
+SrsGperfCPSummaryColor="\$(GREEN)(disabled) "; if [ $SRS_GPERF_CP = YES ]; then SrsGperfCPSummaryColor="\$(YELLOW)"; fi
+SrsGprofSummaryColor="\$(GREEN)(disabled) "; if [ $SRS_GPROF = YES ]; then SrsGprofSummaryColor="\$(YELLOW)"; fi
+
+#####################################################################################
+# makefile
+echo "generate Makefile"
+cat << END > ${SRS_MAKEFILE}
+.PHONY: default help clean server bandwidth librtmp librtmp-sample utest _prepare_dir
+
+# linux shell color support.
+RED="\\${RED}"
+GREEN="\\${GREEN}"
+YELLOW="\\${YELLOW}"
+BLACK="\\${BLACK}"
+
+default: bandwidth librtmp-sample utest
+	@echo -e "\$(GREEN)build summary:\$(BLACK)"
+	@echo -e "     \$(BLACK)+------------------------------------------------------------------------------------\$(BLACK)"
+	@echo -e "     |${SrsGperfSummaryColor}gperf @see: https://github.com/winlinvip/simple-rtmp-server/wiki/GPERF\$(BLACK)"
+	@echo -e "     |     ${SrsGperfMCSummaryColor}gmc @see: http://google-perftools.googlecode.com/svn/trunk/doc/heap_checker.html\$(BLACK)"
+	@echo -e "     |     ${SrsGperfMCSummaryColor}gmc: gperf memory check\$(BLACK)"
+	@echo -e "     |             ${SrsGperfMCSummaryColor}env PPROF_PATH=./objs/pprof HEAPCHECK=normal ./objs/srs -c conf/srs.conf # start gmc\$(BLACK)"
+	@echo -e "     |             ${SrsGperfMCSummaryColor}killall -2 srs # or CTRL+C to stop gmc\$(BLACK)"
+	@echo -e "     |     ${SrsGperfMPSummaryColor}gmp @see: http://google-perftools.googlecode.com/svn/trunk/doc/heapprofile.html\$(BLACK)"
+	@echo -e "     |     ${SrsGperfMPSummaryColor}gmp: gperf memory profile\$(BLACK)"
+	@echo -e "     |             ${SrsGperfMPSummaryColor}rm -f gperf.srs.gmp*; ./objs/srs -c conf/srs.conf # start gmp\$(BLACK)"
+	@echo -e "     |             ${SrsGperfMPSummaryColor}killall -2 srs # or CTRL+C to stop gmp\$(BLACK)"
+	@echo -e "     |             ${SrsGperfMPSummaryColor}./objs/pprof --text objs/srs gperf.srs.gmp* # to analysis memory profile\$(BLACK)"
+	@echo -e "     |     ${SrsGperfCPSummaryColor}gcp @see: http://google-perftools.googlecode.com/svn/trunk/doc/cpuprofile.html\$(BLACK)"
+	@echo -e "     |     ${SrsGperfCPSummaryColor}gcp: gperf cpu profile\$(BLACK)"
+	@echo -e "     |             ${SrsGperfCPSummaryColor}rm -f gperf.srs.gcp*; ./objs/srs -c conf/srs.conf # start gcp\$(BLACK)"
+	@echo -e "     |             ${SrsGperfCPSummaryColor}killall -2 srs # or CTRL+C to stop gcp\$(BLACK)"
+	@echo -e "     |             ${SrsGperfCPSummaryColor}./objs/pprof --text objs/srs gperf.srs.gcp* # to analysis cpu profile\$(BLACK)"
+	@echo -e "     \$(BLACK)+------------------------------------------------------------------------------------\$(BLACK)"
+	@echo -e "     |${SrsGprofSummaryColor}gprof @see: https://github.com/winlinvip/simple-rtmp-server/wiki/GPROF\$(BLACK)"
+	@echo -e "     |${SrsGprofSummaryColor}gprof: GNU profile tool, @see: http://www.cs.utah.edu/dept/old/texinfo/as/gprof.html\$(BLACK)"
+	@echo -e "     |     ${SrsGprofSummaryColor}rm -f gmon.out; ./objs/srs -c conf/srs.conf # start gprof\$(BLACK)"
+	@echo -e "     |     ${SrsGprofSummaryColor}killall -2 srs # or CTRL+C to stop gprof\$(BLACK)"
+	@echo -e "     |     ${SrsGprofSummaryColor}gprof -b ./objs/srs gmon.out > gprof.srs.log && rm -f gmon.out # gprof report to gprof.srs.log\$(BLACK)"
+	@echo -e "     \$(BLACK)+------------------------------------------------------------------------------------\$(BLACK)"
+	@echo -e "     |${SrsResearchSummaryColor}research: ./objs/research, api server, players, ts info.\$(BLACK)"
+	@echo -e "     \$(BLACK)+------------------------------------------------------------------------------------\$(BLACK)"
+	@echo -e "     |${SrsUtestSummaryColor}utest: ./objs/srs_utest, the utest for srs\$(BLACK)"
+	@echo -e "     \$(BLACK)+------------------------------------------------------------------------------------\$(BLACK)"
+	@echo -e "     |${SrsBWTCSummaryColor}bandwidth: ./objs/bandwidth, the bandwidth test client\$(BLACK)"
+	@echo -e "     \$(BLACK)+------------------------------------------------------------------------------------\$(BLACK)"
+	@echo -e "     |${SrsLibrtmpSummaryColor}librtmp @see: https://github.com/winlinvip/simple-rtmp-server/wiki/SrsLibrtmp\$(BLACK)"
+	@echo -e "     |${SrsLibrtmpSummaryColor}librtmp: ./objs/include, ./objs/lib, the srs-librtmp library\$(BLACK)"
+	@echo -e "     |     ${SrsLibrtmpSummaryColor}simple handshake: publish/play stream with simple handshake to server\$(BLACK)"
+	@echo -e "     |     ${SrsLibrtmpSSLSummaryColor}complex handshake: it's not required for client, recommend disable it\$(BLACK)"
+	@echo -e "     |     ${SrsLibrtmpSummaryColor}librtmp-sample: ./research/librtmp, the srs-librtmp client sample\$(BLACK)"
+	@echo -e "     \$(BLACK)+------------------------------------------------------------------------------------\$(BLACK)"
+	@echo -e "     |\$(GREEN)server: ./objs/srs, the srs server\$(BLACK)"
+	@echo -e "     |     ${SrsHlsSummaryColor}hls @see: https://github.com/winlinvip/simple-rtmp-server/wiki/DeliveryHLS\$(BLACK)"
+	@echo -e "     |     ${SrsHlsSummaryColor}hls: generate m3u8 and ts, delivery HLS stream by nginx\$(BLACK)"
+	@echo -e "     |     ${SrsSslSummaryColor}ssl @see: https://github.com/winlinvip/simple-rtmp-server/wiki/RTMPHandshake\$(BLACK)"
+	@echo -e "     |     ${SrsSslSummaryColor}ssl: support RTMP complex handshake for client required, for instance, flash\$(BLACK)"
+	@echo -e "     |     ${SrsFfmpegSummaryColor}ffmpeg @see: https://github.com/winlinvip/simple-rtmp-server/wiki/FFMPEG\$(BLACK)"
+	@echo -e "     |     ${SrsFfmpegSummaryColor}ffmpeg: support transcoding RTMP stream with FFMPEG\$(BLACK)"
+	@echo -e "     |     ${SrsHttpSummaryColor}http @see: https://github.com/winlinvip/simple-rtmp-server/wiki/HTTPCallback\$(BLACK)"
+	@echo -e "     |     ${SrsHttpSummaryColor}http: support http callback for authentication and event injection\$(BLACK)"
+	@echo -e "     \$(BLACK)+------------------------------------------------------------------------------------\$(BLACK)"
+	@echo -e "\$(GREEN)binaries @see: https://github.com/winlinvip/simple-rtmp-server/wiki/Build\$(BLACK)"
+
+help:
+	@echo "Usage: make <help>|<clean>|<server>|<bandwidth>|<librtmp>|<librtmp-sample>|<utest>"
+	@echo "  help               display this help menu"
+	@echo "  clean              cleanup project"
+	@echo "  server             build the srs(simple rtmp server) over st(state-threads)"
+	@echo "  bandwidth          build the bandwidth test client tool."
+	@echo "  librtmp            build the client publish/play library."
+	@echo "  librtmp-sample     build the srs-librtmp sample"
+	@echo "  utest              build the utest for srs"
+
+clean: 
+	(rm -f Makefile)
+	(cd ${SRS_OBJS}; rm -rf srs bandwidth *.hpp srs_utest)
+	(cd ${SRS_OBJS}; rm -rf src research include lib utest)
+	(cd research/librtmp; make clean)
+
+server: _prepare_dir
+	@echo "build the srs(simple rtmp server) over st(state-threads)"
+	\$(MAKE) -f ${SRS_OBJS}/${SRS_MAKEFILE} srs
+
+END
+
+if [ $SRS_BWTC = YES ]; then
+    cat << END >> ${SRS_MAKEFILE}
+bandwidth: server
+	@echo "build the bandwidth test client tool"
+	\$(MAKE) -f ${SRS_OBJS}/${SRS_MAKEFILE} bandwidth
+
+END
+else
+    cat << END >> ${SRS_MAKEFILE}
+bandwidth: server
+	@echo "bandwidth test client tool is disabled, ignore."
+
+END
+fi
+
+if [ $SRS_LIBRTMP = YES ]; then
+    cat << END >> ${SRS_MAKEFILE}
+librtmp: server
+	@echo "build the client publish/play library."
+	\$(MAKE) -f ${SRS_OBJS}/${SRS_MAKEFILE} librtmp
+
+librtmp-sample: librtmp
+	@echo "build the srs-librtmp sample"
+	(cd research/librtmp; \$(MAKE) ${SrsLibrtmpSampleEntry})
+	@echo "srs-librtmp sample build success"
+
+END
+else
+    cat << END >> ${SRS_MAKEFILE}
+librtmp: server
+	@echo "srs-librtmp is disabled, ignore."
+
+librtmp-sample: librtmp
+	@echo "srs-librtmp sample is disabled, ignore."
+
+END
+fi
+
+if [ $SRS_UTEST = YES ]; then
+    cat << END >> ${SRS_MAKEFILE}
+utest: server
+	@echo "build the utest for srs"
+	${SrsUtestMakeEntry}
+	@echo "utest for srs build success"
+
+END
+else
+    cat << END >> ${SRS_MAKEFILE}
+utest: server
+	@echo "utest is disabled, ignore"
+
+END
+fi
+
+cat << END >> ${SRS_MAKEFILE}
+# the ./configure will generate it.
+_prepare_dir:
+	@mkdir -p ${SRS_OBJS}
+END
+
+#####################################################################################
+# build tools or compiler args.
+# enable gdb debug
+GDBDebug=" -g -O0"
+# the warning level.
+WarnLevel=" -Wall"
+# the compile standard.
+CppStd="-ansi"
+# for library compile
+LibraryCompile=" -fPIC"
+# performance of gprof
+SrsGprof=""; SrsGprofLink=""; if [ $SRS_GPROF = YES ]; then SrsGprof=" -pg -lc_p"; SrsGprofLink=" -pg"; fi
+# performance of gperf
+SrsGperf=""; SrsGperfLink=""; if [ $SRS_GPERF = YES ]; then SrsGperfLink=" -lpthread"; fi
+# the cxx flag generated.
+CXXFLAGS="${CppStd}${WarnLevel}${GDBDebug}${LibraryCompile}${SrsGprof}"
+if [ $SRS_GPERF = YES ]; then CXXFLAGS="${CXXFLAGS} -fno-builtin-malloc -fno-builtin-calloc -fno-builtin-realloc -fno-builtin-free"; fi
+cat << END > ${SRS_OBJS}/${SRS_MAKEFILE}
+CC ?= gcc
+GCC ?= gcc
+CXX ?= g++
+AR ?= ar
+LINK ?= g++
+CXXFLAGS = ${CXXFLAGS}
+
+.PHONY: default srs bandwidth librtmp
+
+default:
+
+END
+
+#####################################################################################
+# Libraries, external library to build in srs,
+# header(.h): add to ModuleLibIncs if need the specified library. for example, LibSTRoot
+# library(.a): add to ModuleLibFiles if binary need the specifeid library. for example, LibSTfile
+#
+# st(state-threads) the basic network library for SRS.
+LibSTRoot="${SRS_OBJS}/st"; LibSTfile="${LibSTRoot}/libst.a"
+# hp(http-parser) the http request/url parser, for SRS to support HTTP callback.
+LibHttpParserRoot=""; LibHttpParserfile=""
+if [ $SRS_HTTP = YES ]; then LibHttpParserRoot="${SRS_OBJS}/hp"; LibHttpParserfile="${LibHttpParserRoot}/libhttp_parser.a"; fi
+# openssl-1.0.1f, for the RTMP complex handshake.
+LibSSLRoot="";LibSSLfile=""
+if [ $SRS_SSL = YES ]; then LibSSLRoot="${SRS_OBJS}/openssl/include"; LibSSLfile="${SRS_OBJS}/openssl/lib/libssl.a ${SRS_OBJS}/openssl/lib/libcrypto.a"; fi
+# gperftools-2.1, for mem check and mem/cpu profile
+LibGperfRoot=""; LibGperfFile=""
+if [ $SRS_GPERF = YES ]; then LibGperfRoot="${SRS_OBJS}/gperf/include"; LibGperfFile="${SRS_OBJS}/gperf/lib/libtcmalloc_and_profiler.a"; fi
+
+#####################################################################################
+# Modules, compile each module, then link to binary
+#
+#Core, depends only on system apis.
+MODULE_ID="CORE"
+MODULE_DEPENDS=()
+ModuleLibIncs=(${SRS_OBJS})
+MODULE_FILES=("srs_core" "srs_core_autofree")
+CORE_INCS="src/core"; MODULE_DIR=${CORE_INCS} . auto/modules.sh
+CORE_OBJS="${MODULE_OBJS[@]}"
+#
+#Kernel, depends on core, provides error/log/config, nothing about stream information.
+MODULE_ID="KERNEL" 
+MODULE_DEPENDS=("CORE") 
+ModuleLibIncs=(${SRS_OBJS})
+MODULE_FILES=("srs_kernel_error" "srs_kernel_log" "srs_kernel_stream" "srs_kernel_buffer")
+KERNEL_INCS="src/kernel"; MODULE_DIR=${KERNEL_INCS} . auto/modules.sh
+KERNEL_OBJS="${MODULE_OBJS[@]}"
+#
+#RTMP Protocol, depends on core/kernel, provides rtmp/htttp protocol features.
+MODULE_ID="RTMP" 
+MODULE_DEPENDS=("CORE" "KERNEL") 
+ModuleLibIncs=(${SRS_OBJS} ${LibSSLRoot})
+MODULE_FILES=("srs_protocol_amf0" "srs_protocol_io" "srs_protocol_rtmp_stack" "srs_protocol_rtmp"
+        "srs_protocol_handshake" "srs_protocol_utility")
+RTMP_INCS="src/rtmp"; MODULE_DIR=${RTMP_INCS} . auto/modules.sh
+RTMP_OBJS="${MODULE_OBJS[@]}"
+#
+#App Module
+MODULE_ID="APP" 
+MODULE_DEPENDS=("CORE" "KERNEL" "RTMP") 
+ModuleLibIncs=(${LibSTRoot} ${LibHttpParserRoot} ${SRS_OBJS})
+MODULE_FILES=("srs_app_server" "srs_app_conn" "srs_app_client" "srs_app_socket" "srs_app_source" 
+        "srs_app_codec" "srs_app_refer" "srs_app_hls" "srs_app_forward" "srs_app_encoder"
+        "srs_app_http" "srs_app_thread" "srs_app_bandwidth" "srs_app_st" "srs_app_log"
+        "srs_app_config" "srs_app_pithy_print" "srs_app_reload")
+APP_INCS="src/app"; MODULE_DIR=${APP_INCS} . auto/modules.sh
+APP_OBJS="${MODULE_OBJS[@]}"
+#
+#LIBS Module, build libsrs.a for static link.
+MODULE_ID="LIBS" 
+MODULE_DEPENDS=("CORE" "KERNEL" "RTMP") 
+ModuleLibIncs=(${SRS_OBJS})
+MODULE_FILES=("srs_librtmp" "srs_lib_simple_socket")
+LIBS_INCS="src/libs"; MODULE_DIR=${LIBS_INCS} . auto/modules.sh
+LIBS_OBJS="${MODULE_OBJS[@]}"
+#
+#Main Module
+MODULE_ID="MAIN" 
+MODULE_DEPENDS=("CORE" "KERNEL" "RTMP" "APP")
+ModuleLibIncs=(${LibSTRoot} ${SRS_OBJS} ${LibGperfRoot})
+MODULE_FILES=("srs_main_server" "srs_main_bandcheck")
+MAIN_INCS="src/main"; MODULE_DIR=${MAIN_INCS} . auto/modules.sh
+MAIN_OBJS="${MODULE_OBJS[@]}"
+
+#####################################################################################
+# Binaries, main entrances, link the module and its depends modules,
+# then link to a binary, for example, objs/srs
+#
+# all main entrances
+MAIN_ENTRANCES=("srs_main_server" "srs_main_bandcheck")
+# 
+# all depends libraries
+ModuleLibFiles=(${LibSTfile} ${LibHttpParserfile} ${LibSSLfile} ${LibGperfFile})
+# all depends objects
+MODULE_OBJS="${CORE_OBJS[@]} ${KERNEL_OBJS[@]} ${RTMP_OBJS[@]} ${APP_OBJS[@]} ${MAIN_OBJS[@]}"
+LINK_OPTIONS="-ldl${SrsGprofLink}${SrsGperfLink}"
+#
+# srs:
+# srs(simple rtmp server) over st(state-threads)
+BUILD_KEY="srs" APP_MAIN="srs_main_server" APP_NAME="srs" . auto/apps.sh
+# bandwidth test tool, to test the bandwidth to server
+if [ $SRS_BWTC = YES ]; then
+    BUILD_KEY="bandwidth" APP_MAIN="srs_main_bandcheck" APP_NAME="bandwidth" . auto/apps.sh
+fi
+# srs librtmp
+if [ $SRS_LIBRTMP = YES ]; then
+    MODULE_OBJS="${CORE_OBJS[@]} ${KERNEL_OBJS[@]} ${RTMP_OBJS[@]} ${LIBS_OBJS[@]}"
+    BUILD_KEY="librtmp" LIB_NAME="lib/srs_librtmp" . auto/libs.sh
+fi
+#
+# utest, the unit-test cases of srs, base on gtest1.6
+MODULE_FILES=("srs_utest" "srs_utest_amf0")
+ModuleLibIncs=(${SRS_OBJS} ${LibSTRoot})
+ModuleLibFiles=(${LibSTfile} ${LibHttpParserfile} ${LibSSLfile})
+MODULE_DEPENDS=("CORE" "KERNEL" "RTMP" "APP")
+MODULE_OBJS="${CORE_OBJS[@]} ${KERNEL_OBJS[@]} ${RTMP_OBJS[@]} ${APP_OBJS[@]}"
+MODULE_DIR="src/utest" APP_NAME="srs_utest" . auto/utest.sh
+
+echo 'configure ok! '
+
+#####################################################################################
+# when configure success, prepare build
+#####################################################################################
+# create objs/logs for ffmpeg to write log.
+mkdir -p ${SRS_OBJS}/logs
+
+#####################################################################################
+# configure summary
+#####################################################################################
+# summary
+echo ""
+echo "configure summary:"
+echo "      ${SRS_CONFIGURE}"
+if [ $SRS_HLS = YES ]; then
+    echo -e "${GREEN}HLS over nginx is enabled${BLACK}"
+else
+    echo -e "${YELLOW}warning: without HLS support${BLACK}"
+fi
+if [ $SRS_SSL = YES ]; then
+    echo -e "${GREEN}rtmp complex handshake is enabled${BLACK}"
+else
+    echo -e "${YELLOW}warning: without rtmp complex handshake support, donot support h264/aac to adobe flash player${BLACK}"
+fi
+if [ $SRS_FFMPEG = YES ]; then
+    echo -e "${GREEN}live stream transcoding over FFMPEG is enabled${BLACK}"
+else
+    echo -e "${YELLOW}warning: without live stream transcoding over FFMPEG support${BLACK}"
+fi
+if [ $SRS_HTTP = YES ]; then
+    echo -e "${GREEN}http hooks callback over CherryPy is enabled${BLACK}"
+else
+    echo -e "${YELLOW}warning: without http hooks callback over CherryPy support${BLACK}"
+fi
+if [ $SRS_LIBRTMP = YES ]; then
+    echo -e "${GREEN}srs-librtmp for client is enabled${BLACK}"
+else
+    echo -e "${YELLOW}note: srs-librtmp for client is disabled${BLACK}"
+fi
+if [ $SRS_BWTC = YES ]; then
+    echo -e "${GREEN}srs bandwidth test client is enabled${BLACK}"
+else
+    echo -e "${GREEN}note: srs bandwidth test client is disabled${BLACK}"
+fi
+if [ $SRS_RESEARCH = YES ]; then
+    echo -e "${GREEN}research tools are builded${BLACK}"
+else
+    echo -e "${GREEN}note: research tools are not builded${BLACK}"
+fi
+if [ $SRS_UTEST = YES ]; then
+    echo -e "${GREEN}utest for srs are builded${BLACK}"
+else
+    echo -e "${YELLOW}note: utest for srs are not builded${BLACK}"
+fi
+if [ $SRS_GPERF = YES ]; then
+    echo -e "${GREEN}gperf(tcmalloc) for srs are builded${BLACK}"
+else
+    echo -e "${GREEN}note: gperf(tcmalloc) for srs are not builded${BLACK}"
+fi
+if [ $SRS_GPERF_MC = YES ]; then
+    echo -e "${YELLOW}gmc(gperf memory check) for srs are builded -- Performance may suffer${BLACK}"
+else
+    echo -e "${GREEN}note: gmc(gperf memory check) for srs are not builded${BLACK}"
+fi
+if [ $SRS_GPERF_MP = YES ]; then
+    echo -e "${YELLOW}gmp(gperf memory profile) for srs are builded -- Performance may suffer${BLACK}"
+else
+    echo -e "${GREEN}note: gmp(gperf memory profile) for srs are not builded${BLACK}"
+fi
+if [ $SRS_GPERF_CP = YES ]; then
+    echo -e "${YELLOW}gcp(gperf cpu profile) for srs are builded -- Performance may suffer${BLACK}"
+else
+    echo -e "${GREEN}note: gcp(gperf cpu profile) for srs are not builded${BLACK}"
+fi
+if [ $SRS_GPROF = YES ]; then
+    echo -e "${YELLOW}gprof(GNU profile tool) for srs are builded -- Performance may suffer${BLACK}"
+else
+    echo -e "${GREEN}note: gprof(GNU profile tool) for srs are not builded${BLACK}"
+fi
+
+#####################################################################################
+# next step
+#####################################################################################
+ip=`ifconfig|grep "inet addr"| grep -v "127.0.0.1"|awk '{print $2}'|awk -F ':' 'NR==1 {print $2}'`
+echo ""
+echo "you can:"
+echo "\" make \" to build the srs(simple rtmp server)."
+echo "\" make help \" to get the usage of make"
+if [ $SRS_HLS = YES ]; then
+    echo "\" sudo ./objs/nginx/sbin/nginx  \" to start the nginx http server for hls"
+    echo "\" http://$ip \" rtmp players(OSMF/JWPlayer)"
+fi
+if [ $SRS_FFMPEG = YES ]; then
+    echo -e "\" ./objs/ffmpeg/bin/ffmpeg  \" is used for live stream transcoding"
+fi
+if [ $SRS_HTTP = YES ]; then
+    echo -e "\" python ./research/api-server/server.py 8085  \" to start the api-server"
+fi
+echo "\" ./objs/srs -c conf/srs.conf \" to start the srs live server"
