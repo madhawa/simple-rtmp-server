@@ -80,6 +80,8 @@ private:
     // defined in SrsLogLevel.
     int level;
     char* log_data;
+    // log to file if specified srs_log_file
+    int fd;
 public:
     SrsFastLog();
     virtual ~SrsFastLog();
@@ -91,7 +93,7 @@ public:
     virtual void error(const char* tag, int context_id, const char* fmt, ...);
 private:
     virtual bool generate_header(const char* tag, int context_id, const char* level_name, int* header_size);
-    virtual void write_log(char* str_log, int size);
+    virtual void write_log(char* str_log, int size, int _level);
 };
 
 #endif

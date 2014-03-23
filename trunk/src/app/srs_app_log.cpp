@@ -26,6 +26,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <stdarg.h>
 #include <sys/time.h>
 
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+
+#include <srs_app_config.hpp>
+
 SrsThreadContext::SrsThreadContext()
 {
 }
@@ -36,7 +42,7 @@ SrsThreadContext::~SrsThreadContext()
 
 void SrsThreadContext::generate_id()
 {
-	static int id = 1;
+    static int id = 100;
     cache[st_thread_self()] = id++;
 }
 
@@ -55,13 +61,20 @@ int SrsThreadContext::get_id()
 
 SrsFastLog::SrsFastLog()
 {
-	level = SrsLogLevel::Trace;
+    level = SrsLogLevel::Trace;
     log_data = new char[LOG_MAX_SIZE];
+
+    fd = -1;
 }
 
 SrsFastLog::~SrsFastLog()
 {
     srs_freepa(log_data);
+
+    if (fd > 0) {
+        ::close(fd);
+        fd = -1;
+    }
 }
 
 void SrsFastLog::verbose(const char* tag, int context_id, const char* fmt, ...)
@@ -81,7 +94,7 @@ void SrsFastLog::verbose(const char* tag, int context_id, const char* fmt, ...)
     size += vsnprintf(log_data + size, LOG_MAX_SIZE - size, fmt, ap);
     va_end(ap);
 
-    write_log(log_data, size);
+    write_log(log_data, size, SrsLogLevel::Verbose);
 }
 
 void SrsFastLog::info(const char* tag, int context_id, const char* fmt, ...)
@@ -101,7 +114,7 @@ void SrsFastLog::info(const char* tag, int context_id, const char* fmt, ...)
     size += vsnprintf(log_data + size, LOG_MAX_SIZE - size, fmt, ap);
     va_end(ap);
 
-    write_log(log_data, size);
+    write_log(log_data, size, SrsLogLevel::Info);
 }
 
 void SrsFastLog::trace(const char* tag, int context_id, const char* fmt, ...)
@@ -121,7 +134,7 @@ void SrsFastLog::trace(const char* tag, int context_id, const char* fmt, ...)
     size += vsnprintf(log_data + size, LOG_MAX_SIZE - size, fmt, ap);
     va_end(ap);
 
-    write_log(log_data, size);
+    write_log(log_data, size, SrsLogLevel::Trace);
 }
 
 void SrsFastLog::warn(const char* tag, int context_id, const char* fmt, ...)
@@ -141,7 +154,7 @@ void SrsFastLog::warn(const char* tag, int context_id, const char* fmt, ...)
     size += vsnprintf(log_data + size, LOG_MAX_SIZE - size, fmt, ap);
     va_end(ap);
 
-    write_log(log_data, size);
+    write_log(log_data, size, SrsLogLevel::Warn);
 }
 
 void SrsFastLog::error(const char* tag, int context_id, const char* fmt, ...)
@@ -161,7 +174,10 @@ void SrsFastLog::error(const char* tag, int context_id, const char* fmt, ...)
     size += vsnprintf(log_data + size, LOG_MAX_SIZE - size, fmt, ap);
     va_end(ap);
 
-    write_log(log_data, size);
+    // add strerror() to error msg.
+    size += snprintf(log_data + size, LOG_MAX_SIZE - size, "(%s)", strerror(errno));
+
+    write_log(log_data, size, SrsLogLevel::Error);
 }
 
 bool SrsFastLog::generate_header(const char* tag, int context_id, const char* level_name, int* header_size)
@@ -182,15 +198,15 @@ bool SrsFastLog::generate_header(const char* tag, int context_id, const char* le
     int log_header_size = -1;
     
     if (tag) {
-	    log_header_size = snprintf(log_data, LOG_MAX_SIZE, 
-	        "[%d-%02d-%02d %02d:%02d:%02d.%03d][%s][%s][%d][%d] ", 
-	        1900 + tm->tm_year, 1 + tm->tm_mon, tm->tm_mday, tm->tm_hour, tm->tm_min, tm->tm_sec, (int)(tv.tv_usec / 1000), 
-	        level_name, tag, context_id, errno);
+        log_header_size = snprintf(log_data, LOG_MAX_SIZE, 
+            "[%d-%02d-%02d %02d:%02d:%02d.%03d][%s][%s][%d][%d] ", 
+            1900 + tm->tm_year, 1 + tm->tm_mon, tm->tm_mday, tm->tm_hour, tm->tm_min, tm->tm_sec, (int)(tv.tv_usec / 1000), 
+            level_name, tag, context_id, errno);
     } else {
-	    log_header_size = snprintf(log_data, LOG_MAX_SIZE, 
-	        "[%d-%02d-%02d %02d:%02d:%02d.%03d][%s][%d][%d] ", 
-	        1900 + tm->tm_year, 1 + tm->tm_mon, tm->tm_mday, tm->tm_hour, tm->tm_min, tm->tm_sec, (int)(tv.tv_usec / 1000), 
-	        level_name, context_id, errno);
+        log_header_size = snprintf(log_data, LOG_MAX_SIZE, 
+            "[%d-%02d-%02d %02d:%02d:%02d.%03d][%s][%d][%d] ", 
+            1900 + tm->tm_year, 1 + tm->tm_mon, tm->tm_mday, tm->tm_hour, tm->tm_min, tm->tm_sec, (int)(tv.tv_usec / 1000), 
+            level_name, context_id, errno);
     }
 
     if (log_header_size == -1) {
@@ -203,7 +219,7 @@ bool SrsFastLog::generate_header(const char* tag, int context_id, const char* le
     return true;
 }
 
-void SrsFastLog::write_log(char* str_log, int size)
+void SrsFastLog::write_log(char *str_log, int size, int _level)
 {
     // ensure the tail and EOF of string
     //      LOG_TAIL_SIZE for the TAIL char.
@@ -214,5 +230,37 @@ void SrsFastLog::write_log(char* str_log, int size)
     log_data[size++] = LOG_TAIL;
     log_data[size++] = 0;
     
-    printf("%s", str_log);
+    if (fd < 0 || !_srs_config->get_srs_log_tank_file()) {
+        // if is error msg, then print color msg.
+        // \033[31m : red text code in shell
+        // \033[32m : green text code in shell
+        // \033[33m : yellow text code in shell
+        // \033[0m : normal text code
+        if (_level <= SrsLogLevel::Trace) {
+            printf("%s", str_log);
+        } else if (_level == SrsLogLevel::Warn) {
+            printf("\033[33m%s\033[0m", str_log);
+        } else{
+            printf("\033[31m%s\033[0m", str_log);
+        }
+    }
+    
+    // open log file. if specified
+    if (!_srs_config->get_srs_log_file().empty() && fd < 0) {
+        std::string filename = _srs_config->get_srs_log_file();
+        
+        fd = ::open(filename.c_str(), O_RDWR | O_APPEND);
+        
+        if(fd == -1 && errno == ENOENT) {
+            fd = open(filename.c_str(), 
+                O_RDWR | O_CREAT | O_TRUNC, 
+                S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH
+            );
+        }
+    }
+    
+    // write log to file.
+    if (fd > 0 && _srs_config->get_srs_log_tank_file()) {
+        ::write(fd, str_log, size);
+    }
 }

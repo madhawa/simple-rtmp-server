@@ -31,7 +31,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // current release version
 #define VERSION_MAJOR "0"
 #define VERSION_MINOR "9"
-#define VERSION_REVISION "15"
+#define VERSION_REVISION "29"
 #define RTMP_SIG_SRS_VERSION VERSION_MAJOR"."VERSION_MINOR"."VERSION_REVISION
 // server info.
 #define RTMP_SIG_SRS_KEY "srs"
@@ -69,27 +69,22 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // free the p and set to NULL.
 // p must be a T*.
 #define srs_freep(p) \
-	if (p) { \
-		delete p; \
-		p = NULL; \
-	} \
-	(void)0
+    if (p) { \
+        delete p; \
+        p = NULL; \
+    } \
+    (void)0
 // free the p which represents a array
 #define srs_freepa(p) \
-	if (p) { \
-		delete[] p; \
-		p = NULL; \
-	} \
-	(void)0
+    if (p) { \
+        delete[] p; \
+        p = NULL; \
+    } \
+    (void)0
 
 // compare
 #define srs_min(a, b) (((a) < (b))? (a) : (b))
 #define srs_max(a, b) (((a) < (b))? (b) : (a))
-
-// get current system time in ms, use cache to avoid performance problem
-extern int64_t srs_get_system_time_ms();
-// the deamon st-thread will update it.
-extern void srs_update_system_time_ms();
 
 // signal defines.
 #define SIGNAL_RELOAD SIGHUP
@@ -99,6 +94,8 @@ extern void srs_update_system_time_ms();
 extern std::string srs_replace(std::string str, std::string old_str, std::string new_str);
 // dns resolve utility, return the resolved ip address.
 extern std::string srs_dns_resolve(std::string host);
+// whether system is little endian
+extern bool srs_is_little_endian();
 
 /**
 * disable copy constructor of class

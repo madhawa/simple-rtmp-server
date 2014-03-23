@@ -24,44 +24,24 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <srs_core.hpp>
 
 #include <string.h>
-#include <sys/time.h>
 #include <netdb.h>
 #include <arpa/inet.h>
 
-static int64_t _srs_system_time_us_cache = 0;
-
-int64_t srs_get_system_time_ms()
-{
-	return _srs_system_time_us_cache / 1000;
-}
-
-void srs_update_system_time_ms()
-{
-    timeval now;
-    
-    gettimeofday(&now, NULL);
-
-    // we must convert the tv_sec/tv_usec to int64_t.
-    _srs_system_time_us_cache = ((int64_t)now.tv_sec) * 1000 * 1000 + (int64_t)now.tv_usec;
-    
-    _srs_system_time_us_cache = srs_max(0, _srs_system_time_us_cache);
-}
-
 std::string srs_replace(std::string str, std::string old_str, std::string new_str)
 {
-	std::string ret = str;
-	
-	if (old_str == new_str) {
-		return ret;
-	}
-	
-	size_t pos = 0;
-	while ((pos = ret.find(old_str, pos)) != std::string::npos) {
-		ret = ret.replace(pos, old_str.length(), new_str);
-		pos += new_str.length();
-	}
-	
-	return ret;
+    std::string ret = str;
+    
+    if (old_str == new_str) {
+        return ret;
+    }
+    
+    size_t pos = 0;
+    while ((pos = ret.find(old_str, pos)) != std::string::npos) {
+        ret = ret.replace(pos, old_str.length(), new_str);
+        pos += new_str.length();
+    }
+    
+    return ret;
 }
 
 std::string srs_dns_resolve(std::string host)
@@ -83,5 +63,24 @@ std::string srs_dns_resolve(std::string host)
     }
     
     return ipv4;
+}
+
+bool srs_is_little_endian()
+{
+    // convert to network(big-endian) order, if not equals, 
+    // the system is little-endian, so need to convert the int64
+    static int little_endian_check = -1;
+    
+    if(little_endian_check == -1) {
+        union {
+            int32_t i;
+            int8_t c;
+        } little_check_union;
+        
+        little_check_union.i = 0x01;
+        little_endian_check = little_check_union.c;
+    }
+    
+    return (little_endian_check == 1);
 }
 
