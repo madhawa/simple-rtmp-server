@@ -1,11 +1,20 @@
 #!/bin/bash
 
+# Usage:
+#       bash package.sh [arm]
+#           option arm, whether build for arm, requires ubuntu12.
+
 # user can config the following configs, then package.
 INSTALL=/usr/local/srs
+# whether build for arm, only for ubuntu12.
+ARM=NO
 
 ##################################################################################
 ##################################################################################
 ##################################################################################
+# parse options.
+if [[ $1 == "arm" ]]; then ARM=YES; fi
+
 # discover the current work dir, the log and access.
 echo "argv[0]=$0"
 if [[ ! -f $0 ]]; then 
@@ -34,11 +43,19 @@ ok_msg "target os is ${os_name}-${os_major_version} ${os_release} ${os_machine}"
 # build srs
 # @see https://github.com/winlinvip/simple-rtmp-server/wiki/Build
 ok_msg "start build srs"
-(
-    cd $work_dir && 
-    ./configure --with-ssl --with-hls --with-nginx --with-ffmpeg --with-http-callback --prefix=$INSTALL &&
-    make && rm -rf $package_dir && make DESTDIR=$package_dir install
-) >> $log 2>&1
+if [ $ARM = YES ]; then
+    (
+        cd $work_dir && 
+        ./configure --with-ssl --with-arm-ubuntu12 --prefix=$INSTALL &&
+        make && rm -rf $package_dir && make DESTDIR=$package_dir install
+    ) >> $log 2>&1
+else
+    (
+        cd $work_dir && 
+        ./configure --with-ssl --with-hls --with-nginx --with-ffmpeg --with-http-callback --prefix=$INSTALL &&
+        make && rm -rf $package_dir && make DESTDIR=$package_dir install
+    ) >> $log 2>&1
+fi
 ret=$?; if [[ 0 -ne ${ret} ]]; then failed_msg "build srs failed"; exit $ret; fi
 ok_msg "build srs success"
 
@@ -54,11 +71,28 @@ ok_msg "start copy extra files to package"
 ret=$?; if [[ 0 -ne ${ret} ]]; then failed_msg "copy extra files failed"; exit $ret; fi
 ok_msg "copy extra files success"
 
+# detect for arm.
+if [ $ARM = YES ]; then
+    arm_cpu=`arm-linux-gnueabi-readelf --arch-specific ${build_objs}/srs|grep Tag_CPU_arch:|awk '{print $2}'`
+    os_machine=arm${arm_cpu}cpu
+fi
+ok_msg "machine: $os_machine"
+
 # generate zip dir and zip filename
-srs_version=`${build_objs}/srs -v 2>/dev/stdout 1>/dev/null` &&
+if [ $ARM = YES ]; then
+    srs_version_major=`cat $work_dir/src/core/srs_core.hpp| grep '#define VERSION_MAJOR'| awk '{print $3}'|xargs echo` &&
+    srs_version_minor=`cat $work_dir/src/core/srs_core.hpp| grep '#define VERSION_MINOR'| awk '{print $3}'|xargs echo` &&
+    srs_version_revision=`cat $work_dir/src/core/srs_core.hpp| grep '#define VERSION_REVISION'| awk '{print $3}'|xargs echo` &&
+    srs_version=$srs_version_major.$srs_version_minor.$srs_version_revision
+else
+    srs_version=`${build_objs}/srs -v 2>/dev/stdout 1>/dev/null`
+fi
+ret=$?; if [[ 0 -ne ${ret} ]]; then failed_msg "get srs version failed"; exit $ret; fi
+ok_msg "get srs version $srs_version"
+
 zip_dir="SRS-${os_name}${os_major_version}-${os_machine}-${srs_version}"
 ret=$?; if [[ 0 -ne ${ret} ]]; then failed_msg "generate zip filename failed"; exit $ret; fi
-ok_msg "generate zip filename success"
+ok_msg "target zip filename $zip_dir"
 
 # zip package.
 ok_msg "start zip package"
