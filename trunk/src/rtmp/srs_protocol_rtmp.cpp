@@ -87,6 +87,7 @@ SrsRequest* SrsRequest::copy()
     cp->app = app;
     cp->objectEncoding = objectEncoding;
     cp->pageUrl = pageUrl;
+    cp->host = host;
     cp->port = port;
     cp->schema = schema;
     cp->stream = stream;
@@ -111,19 +112,20 @@ int SrsRequest::discovery_app()
     }
     
     if ((pos = url.find("/")) != std::string::npos) {
-        vhost = url.substr(0, pos);
-        url = url.substr(vhost.length() + 1);
-        srs_verbose("discovery vhost=%s", vhost.c_str());
+        host = url.substr(0, pos);
+        url = url.substr(host.length() + 1);
+        srs_verbose("discovery host=%s", host.c_str());
     }
 
     port = RTMP_DEFAULT_PORT;
-    if ((pos = vhost.find(":")) != std::string::npos) {
-        port = vhost.substr(pos + 1);
-        vhost = vhost.substr(0, pos);
-        srs_verbose("discovery vhost=%s, port=%s", vhost.c_str(), port.c_str());
+    if ((pos = host.find(":")) != std::string::npos) {
+        port = host.substr(pos + 1);
+        host = host.substr(0, pos);
+        srs_verbose("discovery host=%s, port=%s", host.c_str(), port.c_str());
     }
     
     app = url;
+    vhost = host;
     srs_vhost_resolve(vhost, app);
     strip();
     
@@ -270,6 +272,11 @@ int SrsHandshakeBytes::create_c0c1()
     c0c1 = new char[1537];
     srs_random_generate(c0c1, 1537);
     
+    // plain text required.
+    c0c1[0] = 0x03;
+    *(int32_t*)(c0c1 + 1) = ::time(NULL);
+    *(int32_t*)(c0c1 + 1 + 4) = 0x00;
+    
     return ret;
 }
 
@@ -284,6 +291,14 @@ int SrsHandshakeBytes::create_s0s1s2()
     s0s1s2 = new char[3073];
     srs_random_generate(s0s1s2, 3073);
     
+    // plain text required.
+    s0s1s2[0] = 0x03;
+    *(int32_t*)(s0s1s2 + 1) = ::time(NULL);
+    // s2 time2 copy from c1
+    if (c0c1) {
+        *(int32_t*)(s0s1s2 + 1 + 4) = *(int32_t*)(c0c1 + 1);
+    }
+    
     return ret;
 }
 
@@ -297,6 +312,13 @@ int SrsHandshakeBytes::create_c2()
     
     c2 = new char[1536];
     srs_random_generate(c2, 1536);
+    
+    // time
+    *(int32_t*)(c2) = ::time(NULL);
+    // c2 time2 copy from s1
+    if (s0s1s2) {
+        *(int32_t*)(c2 + 4) = *(int32_t*)(s0s1s2 + 1);
+    }
     
     return ret;
 }
